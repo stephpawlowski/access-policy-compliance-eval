@@ -1,0 +1,24 @@
+description: "IAM access-policy compliance checker — does the LLM apply a written access policy correctly?"
+
+prompts:
+  - file://prompt.txt
+
+providers:
+  # Uncomment / edit the providers you want to test. You need an API key set as an
+  # environment variable for whichever provider(s) you use (see README.md).
+  - anthropic:messages:claude-sonnet-5
+  # - openai:gpt-4o-mini
+  # - openai:gpt-4o
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: |
+        // The model is instructed to put APPROVE / DENY / ESCALATE on the first line.
+        // We grade by checking that first line against the expected decision from
+        // our answer key (tests.csv "expected" column).
+        const firstLine = String(output).trim().split('\n')[0].toLowerCase();
+        const expected = String(context.vars.expected).toLowerCase();
+        return firstLine.includes(expected);
+
+tests: file://tests.csv

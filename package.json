@@ -1,0 +1,13 @@
+{
+  "name": "access-policy-compliance-eval",
+  "version": "1.0.0",
+  "description": "Evaluating whether an LLM correctly applies a written IAM access policy to hypothetical access requests, using promptfoo.",
+  "private": true,
+  "scripts": {
+    "eval": "promptfoo eval",
+    "view": "promptfoo view"
+  },
+  "devDependencies": {
+    "promptfoo": "latest"
+  }
+}
