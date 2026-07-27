@@ -1,132 +1,133 @@
 # Access Policy Compliance Checker
 
-An LLM evaluation project: can an LLM correctly apply a written IAM access policy to
-hypothetical access requests? Built with [promptfoo](https://www.promptfoo.dev/), an
-open-source tool for testing and scoring LLM prompts against a dataset.
+I wanted to know if an LLM can actually apply a written access policy the way a
+human IAM reviewer would. Not just handle the obvious cases, but know when to
+punt to a human instead of guessing. This is a small eval built with
+[promptfoo](https://www.promptfoo.dev/), a free, open-source tool for testing
+and scoring LLM prompts against a dataset of test cases.
 
-## Problem
+## The setup
 
-IAM/governance work involves applying written access policies consistently:
-approve, deny, or escalate a request based on role, department, and specific rules.
-This project asks whether an LLM, given the same policy a human reviewer would use,
-makes the same calls a human governance reviewer would — including on genuinely
-ambiguous edge cases where the right answer is "escalate to a human," not a guess.
+IAM and governance work comes down to applying rules consistently: approve,
+deny, or escalate a request based on someone's role, department, and the
+specifics of the situation. So I wrote a policy, wrote a batch of test
+requests, and checked whether the model's decisions matched what I'd decided
+myself ahead of time, including on the requests where the "right" answer is
+"escalate to a human," not a confident guess either way.
 
-## Approach
+## What's in this repo
 
-1. **`policy.md`** — a fictional but realistic IAM policy (10 rules) covering
-   contractor/employee/intern/admin roles, billing access, production access,
-   cross-department approvals, offboarding, and HR data access.
-2. **`tests.csv`** — 30 hypothetical access requests, each with a self-written
-   correct answer (`approve` / `deny` / `escalate`) and the rule-based reasoning
-   behind it. The set deliberately includes: one request per rule, a few "trap"
-   cases where a sympathetic justification should still be denied per the policy
-   as written (#27), and cases that pit two rules against each other (#28).
-3. **`prompt.txt`** — the prompt template: the full policy + one request, asking
-   the model to answer APPROVE/DENY/ESCALATE on the first line with a one-sentence,
-   rule-citing justification.
-4. **`promptfooconfig.yaml`** — wires the prompt and dataset together and grades
-   each response by checking whether the model's first-line decision matches the
-   `expected` column in `tests.csv`.
+- **`policy.md`** is a fictional but realistic IAM policy, 10 rules, covering
+  contractors, employees, interns, admins, billing access, production access,
+  cross-department approvals, offboarding, and HR data access.
+- **`tests.csv`** has 30 hypothetical access requests. Each one has an answer
+  I wrote myself (approve, deny, or escalate) plus the reasoning behind it.
+  There's one request per rule, a couple of "trap" cases where a sympathetic
+  justification should still get denied per the policy as written (see #27),
+  and a case where two rules pull in different directions (#28).
+- **`prompt.txt`** is the template sent to the model: the full policy, then
+  one request, then instructions to answer APPROVE/DENY/ESCALATE on the first
+  line and give a one-sentence reason citing the rule.
+- **`promptfooconfig.yaml`** ties the prompt and the test cases together and
+  grades each response against the `expected` column in tests.csv.
 
 ## Setup
 
-Requires [Node.js](https://nodejs.org/) 18+.
+You'll need [Node.js](https://nodejs.org/) 18 or later.
 
 ```bash
 cd access-policy-eval
 npm install
 ```
 
-Set your Anthropic API key (get one at https://console.anthropic.com/):
+Then set an Anthropic API key (grab one at https://console.anthropic.com/):
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-(To test other models instead, edit the `providers:` list in `promptfooconfig.yaml` —
-e.g. uncomment the OpenAI lines and set `OPENAI_API_KEY` instead/as well.)
+Want to test a different model instead? Edit the `providers:` list in
+`promptfooconfig.yaml` and set the matching API key.
 
-## Running the eval
+## Running it
 
 ```bash
 npm run eval
 ```
 
-This runs all 30 test cases against the configured model(s) and prints a pass/fail
-summary with overall accuracy. To browse individual results in a local web UI:
+That runs all 30 cases and prints a pass/fail summary with overall accuracy.
+For a browsable view of each individual result:
 
 ```bash
 npm run view
 ```
 
-This opens a browser view where you can see, per test case: the exact request, the
-model's full response, whether it matched the expected decision, and filter down to
-just the failures — the most interesting part for write-up purposes.
+You can filter down to just the failures there, which is honestly the more
+useful part once you're past the first run.
 
-## Findings
+## What I found
 
-**Model tested:** `claude-sonnet-5` (single-provider run)
+Model tested: `claude-sonnet-5`, one provider.
 
-**Overall accuracy: 28/30 (93.3%)**
+**28 out of 30 correct (93.3%).**
 
-### The two failures
+### The two misses
 
-Both failures had the *same* expected decision (`deny`) and the *same* actual
-decision (`escalate`) — not random noise, a consistent pattern:
+Both wrong answers were the same kind of mistake: expected `deny`, got
+`escalate`.
 
-- **Row 20** — Sales FTE requests Engineering-tool access; neither their manager nor
-  any Engineering admin has approved. Expected: `deny` (Rule 6 requires both
-  approvals; with zero approvals on record, there's no pending decision to route to
-  a human — the request simply doesn't meet the bar). Model said: `escalate`.
-- **Row 24** — HR FTE requests write access to HR systems with no People-team admin
-  approval mentioned anywhere. Expected: `deny` (Rule 8's approval requirement isn't
-  met). Model said: `escalate`.
+Row 20 is a Sales employee asking for access to an Engineering tool, with
+neither their manager nor an Engineering admin having approved it. My answer
+key says deny: the rule requires both approvals, and zero approvals isn't a
+partial case that needs a human to sort out, it's just a request that doesn't
+clear the bar. The model said escalate.
 
-### Pattern in errors
+Row 24 is an HR employee asking for write access to HR systems, no
+People-team admin approval anywhere in the request. Same story: the
+requirement isn't met, so deny. Model said escalate again.
 
-In both cases the model **over-escalates when a rule is approval-gated and no
-approval is mentioned**. It reads "no approval on record" as *unresolved* — as if
-the approval might still be forthcoming and a human should check — rather than as
-"the stated requirement for approval isn't satisfied, so deny." My answer key
-treated an explicitly-absent approval as a clean denial, since Rule 6 says "if only
-one has approved, escalate" (implying a two-state contrast: partial vs. none), and
-zero approvals isn't the partial-approval case that escalate branch was written for.
+### Why this happened
 
-This is a genuinely defensible disagreement, not a random model error, which is
-what makes it interesting: it's really a policy-drafting ambiguity `policy.md`
-didn't fully close. A stricter version of Rule 6 would explicitly say "zero
-approvals = deny; exactly one approval = escalate" instead of leaving "neither has
-approved" to be inferred. In both failures, the model cited the correct rule number
-and articulated a coherent rationale — it wasn't confused about the policy, it just
-resolved a genuine ambiguity in the more cautious direction.
+The model treats "no approval mentioned" as an open question, like the
+approval could still show up later and someone should go check. I'd treated
+it as a closed one: the policy says approval is required, none exists, so the
+answer is no. Rule 6 actually gives a hint about which reading is closer to
+right, it says "if only one has approved, escalate," which implies there's a
+difference between one approval and zero. Zero isn't the ambiguous case that
+line was written for.
 
-### What this suggests about using an LLM for policy enforcement in production
+I don't think this is the model being sloppy. In both cases it cited the
+correct rule and gave a reasonable explanation for its answer. It just landed
+on the more cautious reading of a rule that had a gap in it. Honestly, that
+gap is on me and my policy draft, not the model. If I tightened Rule 6 to
+spell out "zero approvals is a deny, exactly one is an escalate," this
+probably goes away.
 
-93% is a strong starting point but not "hands-off" territory for anything with real
-consequences (access grants, billing, production data). The failure mode here isn't
-hallucination or rule-forgetting — it's a difference in how strictly to read a rule
-with an implicit gap. That means the fix isn't "prompt harder," it's **tightening
-the policy's own wording** before trusting an LLM as a first-pass reviewer, and
-keeping a human in the loop specifically around approval-chain edge cases until the
-policy language is airtight. It also argues for treating an over-cautious "escalate"
-as a much cheaper mistake than an incorrect "approve" — which is a reasonable
-default bias for an LLM reviewer to have, even when it doesn't match the answer key.
+### Take away
 
-## Project structure
+93% is a good first pass, but I wouldn't call it hands-off for anything that
+actually matters, like real access grants or billing changes. And the
+interesting thing here isn't that the model hallucinated or forgot a rule,
+it read an ambiguous rule cautiously instead of strictly. That's a policy
+problem more than a prompting problem: the fix is writing tighter rules, not
+a better prompt. It also makes me think an LLM reviewer erring toward
+"escalate" over "approve" when it's unsure is a fine default to have, even
+when it costs a point against my answer key.
+
+## Files
 
 ```
 access-policy-eval/
-├── policy.md              # The IAM access policy being tested
-├── tests.csv               # 30 test cases + answer key (id, request, expected, reasoning)
-├── prompt.txt              # Prompt template sent to the LLM
-├── promptfooconfig.yaml    # promptfoo config wiring prompt + tests + grading
+├── policy.md              the policy being tested
+├── tests.csv              30 test cases plus my answer key
+├── prompt.txt             what actually gets sent to the model
+├── promptfooconfig.yaml   wires it all together and grades it
 ├── package.json
 └── README.md
 ```
 
-## Why this project
+## Why I built this
 
-Built as a hands-on rep in LLM evaluation methodology — writing test cases, defining
-ground truth, and measuring model accuracy against it — applied to a real IAM/access-
-governance scenario.
+I wanted real, hands-on reps at LLM evaluation: writing test cases, deciding
+what "correct" means ahead of time, and measuring a model against that. This
+was the domain I know best, so I used it as the test bed.
