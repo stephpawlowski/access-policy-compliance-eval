@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Access Policy Compliance Checker — Eval Results</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161920;
+    --panel-2: #1c2029;
+    --border: #2a2f3a;
+    --text: #e8eaed;
+    --muted: #9aa1ac;
+    --accent: #7c9eff;
+    --pass: #4caf7d;
+    --pass-bg: rgba(76,175,125,0.12);
+    --fail: #e0654f;
+    --fail-bg: rgba(224,101,79,0.12);
+    --approve: #4caf7d;
+    --deny: #e0654f;
+    --escalate: #d8a83e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 20px 80px; }
+  header { margin-bottom: 32px; }
+  h1 { font-size: 1.6rem; margin: 0 0 8px; }
+  .subtitle { color: var(--muted); font-size: 0.95rem; max-width: 640px; }
+  .subtitle a { color: var(--accent); }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 28px 0;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .stat .num { font-size: 1.7rem; font-weight: 600; }
+  .stat .label { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+  .stat.accuracy .num { color: var(--pass); }
+
+  .breakdown {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .pill {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .pill b { color: var(--text); }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .controls input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+  .controls input[type="text"]::placeholder { color: var(--muted); }
+  .filter-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .filter-btn.active { color: var(--text); border-color: var(--accent); background: var(--panel-2); }
+  .filter-btn:hover { color: var(--text); }
+
+  .row {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .row-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+  }
+  .row-head:hover { background: var(--panel-2); }
+  .row-id { color: var(--muted); font-size: 0.8rem; width: 26px; flex-shrink: 0; }
+  .row-request { flex: 1; font-size: 0.88rem; }
+  .badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+  .badge.pass { background: var(--pass-bg); color: var(--pass); }
+  .badge.fail { background: var(--fail-bg); color: var(--fail); }
+  .decision {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    border: 1px solid currentColor;
+  }
+  .decision.approve { color: var(--approve); }
+  .decision.deny { color: var(--deny); }
+  .decision.escalate { color: var(--escalate); }
+  .chev { color: var(--muted); font-size: 0.75rem; transition: transform 0.15s; flex-shrink: 0; }
+  .row.open .chev { transform: rotate(90deg); }
+
+  .row-body {
+    display: none;
+    padding: 4px 14px 16px 14px;
+    border-top: 1px solid var(--border);
+  }
+  .row.open .row-body { display: block; }
+  .field { margin-top: 12px; }
+  .field .k { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .field .v { font-size: 0.88rem; white-space: pre-wrap; }
+  .field .v.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+
+  .empty { color: var(--muted); text-align: center; padding: 40px 0; font-size: 0.9rem; }
+
+  footer { margin-top: 40px; color: var(--muted); font-size: 0.8rem; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Access Policy Compliance Checker</h1>
+    <div class="subtitle">
+      30 hypothetical IAM access requests, scored against a self-written answer key
+      to see whether an LLM applies a written access policy the way a human reviewer
+      would. Model tested: <code>claude-sonnet-5</code>.
+      Full write-up on <a href="https://github.com/stephpawlowski/access-policy-compliance-eval" target="_blank" rel="noopener">GitHub</a>.
+    </div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+  <div class="breakdown" id="breakdown"></div>
+
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search requests, rules, reasoning…">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="pass">Passed</button>
+    <button class="filter-btn" data-filter="fail">Failed</button>
+  </div>
+
+  <div id="rows"></div>
+  <div class="empty" id="empty" style="display:none;">No matching test cases.</div>
+
+  <footer>
+    Static page, no live API calls. Data generated by <a href="https://www.promptfoo.dev/" target="_blank" rel="noopener">promptfoo</a>
+    on Jul 27, 2026. Rebuild by re-running the eval and regenerating this page.
+  </footer>
+</div>
+
+<script>
+const DATA = [{"id": 1, "request": "Requester is a Contractor on a 3-month SOW for the Payments API redesign. They request read-only access to the Payments API documentation and design repo, which is directly within their SOW scope.", "expected": "approve", "reasoning": "Rule 1: contractors get read-only access to systems relevant to their SOW.", "output": "APPROVE\n\nRule 1 permits contractors read-only access to systems relevant to their SOW, and this request is within scope and non-production per Rule 4.", "decision": "APPROVE", "pass": true}, {"id": 2, "request": "Requester is a Contractor working on the mobile app. They request write access to the mobile app repo so they can push commits directly instead of submitting PRs.", "expected": "deny", "reasoning": "Rule 1: contractors may never be granted write access, regardless of justification.", "output": "DENY\n\nRule 1 prohibits contractors from ever being granted write access, regardless of circumstances.", "decision": "DENY", "pass": true}, {"id": 3, "request": "Requester is a Contractor doing financial modeling work for the Finance team. They request access to the billing/financial systems to pull invoice data.", "expected": "deny", "reasoning": "Rules 1 and 2: contractors never get billing access, and billing access is Finance-FTE-only.", "output": "DENY\nRule 2 restricts billing/financial-systems access to full-time Finance employees only, and Rule 1 prohibits contractors from receiving billing access regardless of the requester's role or purpose.", "decision": "DENY", "pass": true}, {"id": 4, "request": "Requester is the VP of Engineering (FTE). They request billing system access, noting they approve their team's cloud spend budget every quarter.", "expected": "deny", "reasoning": "Rule 2: billing access is Finance-FTE-only, no exceptions for seniority or other departments.", "output": "DENY\nRule 2 restricts billing/financial-systems access to full-time employees on the Finance team, with no exceptions for other departments regardless of seniority, so the VP of Engineering's request must be denied.", "decision": "DENY", "pass": true}, {"id": 5, "request": "Requester is a Finance department FTE (Senior Accountant). They request access to the billing system to reconcile monthly invoices, which is part of their job function.", "expected": "approve", "reasoning": "Rule 2: full-time Finance employees are exactly who billing access is for.", "output": "APPROVE\nRule 2 permits billing/financial-systems access for full-time employees on the Finance team, and this request qualifies directly.", "decision": "APPROVE", "pass": true}, {"id": 6, "request": "Requester is a Contractor placed with the Finance team for a 6-month AP automation project. They request billing system access to test the automation against real invoice data.", "expected": "deny", "reasoning": "Rule 1 overrides: contractors never get billing access even when embedded in Finance.", "output": "DENY\nRule 1 prohibits contractors from ever receiving write, admin, or billing access, and Rule 2 restricts billing access to full-time Finance employees only, so this contractor's request must be denied regardless of department placement.", "decision": "DENY", "pass": true}, {"id": 7, "request": "Requester is an IT Admin (FTE) who wants to grant themselves billing system access 'to help troubleshoot a Finance ticket faster.'", "expected": "deny", "reasoning": "Rule 3: admins cannot override the Finance-only billing restriction, including for themselves.", "output": "DENY\n\nRule 2 restricts billing/financial-systems access to full-time Finance employees with no exceptions, and Rule 3 confirms an Admin cannot override this restriction even for themselves.", "decision": "DENY", "pass": true}, {"id": 8, "request": "Requester is an Admin (FTE) asking to grant a Contractor temporary write access to a shared repo 'just for this one urgent fix.'", "expected": "deny", "reasoning": "Rule 3: admins cannot override the contractor read-only limit for anyone.", "output": "DENY\n\nRule 1 prohibits contractors from ever being granted write access, and Rule 3 confirms an admin cannot override this restriction regardless of urgency or seniority.", "decision": "DENY", "pass": true}, {"id": 9, "request": "Requester is an Engineering FTE. They request access to the production customer database to debug a reported data issue.", "expected": "approve", "reasoning": "Rule 4a: FTE + Engineering department qualifies for production access.", "output": "APPROVE\n\nRule 4: Requester is an FTE in the Engineering department, which satisfies the requirement for production system access.", "decision": "APPROVE", "pass": true}, {"id": 10, "request": "Requester is a Security team FTE. They request temporary admin access to the production deploy pipeline to contain an active incident.", "expected": "approve", "reasoning": "Rule 9: Security FTEs get auto-approved elevated access for incident response (logged for 24hr review).", "output": "APPROVE\nRule 9 permits Security team FTEs to request elevated/admin access for incident response, which is auto-approved subject to retroactive review within 24 hours.", "decision": "APPROVE", "pass": true}, {"id": 11, "request": "Requester is a Sales FTE. They request access to the production customer database to 'better understand customer usage patterns' for a sales pitch. No security approval is mentioned.", "expected": "deny", "reasoning": "Rule 4: production access requires Engineering/Security membership or written Security admin approval; neither applies.", "output": "DENY\nRule 4 requires FTE status plus Engineering/Security membership or explicit Security-admin written approval for production access, and this Sales FTE meets neither condition.", "decision": "DENY", "pass": true}, {"id": 12, "request": "Requester is a Sales FTE. They request access to the production customer database for a customer escalation, and the request includes written approval from a named Security team admin attached to the ticket.", "expected": "approve", "reasoning": "Rule 4b: written Security admin approval satisfies the production-access requirement.", "output": "APPROVE\nRule 4(b) permits production access for an FTE with explicit written approval from a Security team admin, which this Sales FTE request satisfies.", "decision": "APPROVE", "pass": true}, {"id": 13, "request": "Requester is a Contractor on the QA team. They request read-only access to the staging/sandbox environment to run test cases per their SOW.", "expected": "approve", "reasoning": "Rules 1 and 4: contractors can get read-only, non-production access relevant to their SOW.", "output": "APPROVE\nRule 1 permits contractors read-only access relevant to their SOW, and rule 4 permits contractors read-only, non-production access (staging/sandbox qualifies as non-production).", "decision": "APPROVE", "pass": true}, {"id": 14, "request": "Requester is a Contractor. They request access to the production deploy tooling so they can 'help out with a release this week.'", "expected": "deny", "reasoning": "Rule 4: contractors may never be granted production access, only non-production.", "output": "DENY\nRule 4 explicitly states contractors may never be granted production access (production is limited to FTEs in Engineering/Security or with Security admin written approval), and Rule 1 confirms contractors are restricted to read-only access relevant to their SOW.", "decision": "DENY", "pass": true}, {"id": 15, "request": "Requester is an Intern on the Engineering team. Their sponsoring manager is a regular FTE (not an Admin). The intern requests write access to a production repo.", "expected": "deny", "reasoning": "Rule 5: without an Admin sponsor co-signing in writing, an intern's ceiling is contractor-level (read-only, non-prod) \u2014 write/prod access is denied outright.", "output": "DENY\nRule 5 caps Interns at read-only, non-production access since their sponsoring manager is a regular FTE (not an Admin co-signing), so write access to a production repo is denied outright.", "decision": "DENY", "pass": true}, {"id": 16, "request": "Requester is an Intern. Their sponsoring manager is an Admin who has co-signed, in writing, a request for broader access than the standard read-only intern ceiling.", "expected": "escalate", "reasoning": "Rule 5: an Admin-sponsor co-signed broader request is explicitly called out as needing human judgment, not auto-approval.", "output": "ESCALATE\n\nRule 5 requires that when an Admin sponsor co-signs a broader request in writing, the request must be escalated rather than auto-approved.", "decision": "ESCALATE", "pass": true}, {"id": 17, "request": "Requester is an Intern on the Support team, sponsored by their FTE manager (not an Admin). They request standard read-only, non-production access to the support ticketing system.", "expected": "approve", "reasoning": "Rule 5: this matches the default intern ceiling (same as contractor: read-only, non-prod, no billing).", "output": "APPROVE\nPer Rule 5, the Intern's access request is within the standard read-only, non-production ceiling, and since the sponsoring manager is not an Admin co-signing a broader request, standard approval applies.", "decision": "APPROVE", "pass": true}, {"id": 18, "request": "Requester is a Sales FTE requesting access to an internal Engineering tool. Their manager has approved the request in writing; the Engineering team's admin has not yet responded.", "expected": "escalate", "reasoning": "Rule 6: cross-department access needs both the requester's manager and the owning department's admin to approve; only one has approved so far.", "output": "ESCALATE\nRule 6: cross-department request requires both the requester's manager and the owning department's admin to approve, and only the manager has approved so far.", "decision": "ESCALATE", "pass": true}, {"id": 19, "request": "Requester is a Sales FTE requesting access to an internal Engineering tool. Both their manager and the Engineering department's admin have approved in writing.", "expected": "approve", "reasoning": "Rule 6: both required approvals are present.", "output": "APPROVE\nRule 6 is satisfied because this is a cross-department request and both the requester's manager and the owning department's (Engineering) admin have approved in writing.", "decision": "APPROVE", "pass": true}, {"id": 20, "request": "Requester is a Sales FTE requesting access to an internal Engineering analytics tool. Neither their manager nor any Engineering admin has approved or been consulted.", "expected": "deny", "reasoning": "Rule 6: cross-department access requires both approvals; here neither exists, so there's no basis to grant it.", "output": "ESCALATE\n\nThis is a cross-department request (Rule 6) requiring approval from both the requester's manager and the owning department's (Engineering) admin, and since neither has approved or been consulted, it must be escalated.", "decision": "ESCALATE", "pass": false}, {"id": 21, "request": "Requester is a former Contractor whose SOW/contract end date was 3 weeks ago. They request renewal of their prior read-only access, saying they 'just need to finish wrapping up some notes.'", "expected": "deny", "reasoning": "Rule 7: any request from someone past their contract end date is denied outright.", "output": "DENY\n\nRule 7 mandates outright denial of any access request from someone whose contract end date has passed, regardless of role or prior access level.", "decision": "DENY", "pass": true}, {"id": 22, "request": "Requester is a former employee who was terminated 2 days ago. They ask to retain their admin access temporarily 'to help hand off open tickets to the team.'", "expected": "deny", "reasoning": "Rule 7: offboarded individuals are denied regardless of role or the reason given.", "output": "DENY\n\nRule 7 mandates outright denial of any access request from someone whose employment end date has passed, regardless of role, past access, or stated justification.", "decision": "DENY", "pass": true}, {"id": 23, "request": "Requester is a People (HR) FTE. They request read-only access to Engineering department personnel records as part of a routine headcount audit.", "expected": "approve", "reasoning": "Rule 8: People team has read-only access to personnel records across all departments by default.", "output": "APPROVE\nRule 8 grants People (HR) read-only access to personnel records across all departments by default, which covers this request.", "decision": "APPROVE", "pass": true}, {"id": 24, "request": "Requester is a People (HR) FTE. They request write access to the HR systems to correct an employee's records. No People-team admin approval is mentioned anywhere in the request.", "expected": "deny", "reasoning": "Rule 8: write access to HR systems requires People-team admin approval, which is absent here.", "output": "ESCALATE\nRule 8 requires People-team admin approval for write access to HR systems, and no such approval is mentioned, so the request cannot be approved as-is and must be escalated for that approval.", "decision": "ESCALATE", "pass": false}, {"id": 25, "request": "Requester is a Security FTE. They request standing admin access to the internal analytics platform, describing it as generally useful for their role rather than tied to any active incident.", "expected": "escalate", "reasoning": "Rule 9 only covers incident-response access; a general, non-incident request falls outside that auto-approval and isn't clearly covered elsewhere, so it needs human judgment.", "output": "ESCALATE\nRule 9 only auto-approves Security FTE admin access for incident response, and since this request is for standing access unrelated to any active incident, it is not clearly covered and must be escalated per Rule 10.", "decision": "ESCALATE", "pass": true}, {"id": 26, "request": "Requester's role is listed only as 'Consultant' with no department specified. They request write access to a shared project repo.", "expected": "escalate", "reasoning": "Rule 10: 'Consultant' isn't a defined role (Employee/Contractor/Intern/Admin/Manager), so this is a genuinely ambiguous case that needs human review.", "output": "ESCALATE\n\"Consultant\" is not a defined role and no department is specified, so per Rule 10 this unclear role/request must be escalated to a human reviewer.", "decision": "ESCALATE", "pass": true}, {"id": 27, "request": "Requester is a Contractor whose signed SOW explicitly lists 'limited write access to the sandbox test repo' as an approved deliverable-support task. They request that sandbox write access.", "expected": "deny", "reasoning": "Rule 1 is written as an absolute ceiling ('never,' 'regardless of who requests it') with no SOW exception carved out, so the policy as written still denies this even though it's the most sympathetic case for an exception.", "output": "DENY\nRule 1 explicitly prohibits contractors from being granted write access under any circumstances, regardless of what the SOW states.", "decision": "DENY", "pass": true}, {"id": 28, "request": "Requester is a Security team Admin (FTE). They request billing/financial system access, justifying it as necessary for an active security incident involving suspected billing fraud.", "expected": "deny", "reasoning": "Rule 2 states billing access is Finance-FTE-only with no exceptions, and rule 9's incident-response carve-out is scoped to 'admin access to any system,' not specifically billing \u2014 the more specific, absolute rule (2) controls.", "output": "DENY\nRule 2 explicitly restricts billing/financial-systems access to full-time Finance employees with no exceptions, and Rule 3 confirms that even an Admin cannot override this Finance-only billing restriction, regardless of the security justification cited under Rule 9.", "decision": "DENY", "pass": true}, {"id": 29, "request": "Requester is an Engineering Manager (FTE) with direct reports. They request access to the production deploy tooling to review a pipeline change before a release.", "expected": "approve", "reasoning": "Rule 4a: FTE + Engineering department qualifies for production access.", "output": "APPROVE\nRule 4: requester is FTE and a member of the Engineering department, satisfying condition (a) for production system access.", "decision": "APPROVE", "pass": true}, {"id": 30, "request": "Requester's role is 'External Auditor' engaged by the board, not defined anywhere in the policy's role list. They request read-only access to financial records for a compliance review.", "expected": "escalate", "reasoning": "Rule 10: an undefined role/relationship isn't covered by rules 1-9, so it should be escalated rather than assumed to fit an existing category.", "output": "ESCALATE\nThe \"External Auditor\" role is not defined in the policy's role list, and financial access is otherwise restricted to full-time Finance employees under Rule 2, so this undefined role/access combination must be escalated per Rule 10.", "decision": "ESCALATE", "pass": true}];
+
+function decisionClass(d) {
+  d = d.toLowerCase();
+  if (d.includes('approve')) return 'approve';
+  if (d.includes('deny')) return 'deny';
+  if (d.includes('escalate')) return 'escalate';
+  return '';
+}
+
+function renderStats() {
+  const total = DATA.length;
+  const passed = DATA.filter(d => d.pass).length;
+  const failed = total - passed;
+  const acc = ((passed / total) * 100).toFixed(1);
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat accuracy"><div class="num">${acc}%</div><div class="label">Accuracy</div></div>
+    <div class="stat"><div class="num">${total}</div><div class="label">Test cases</div></div>
+    <div class="stat"><div class="num" style="color:var(--pass)">${passed}</div><div class="label">Passed</div></div>
+    <div class="stat"><div class="num" style="color:var(--fail)">${failed}</div><div class="label">Failed</div></div>
+  `;
+
+  const byExpected = {};
+  DATA.forEach(d => {
+    const k = d.expected;
+    byExpected[k] = byExpected[k] || { total: 0, pass: 0 };
+    byExpected[k].total++;
+    if (d.pass) byExpected[k].pass++;
+  });
+  const order = ['approve', 'deny', 'escalate'];
+  document.getElementById('breakdown').innerHTML = order
+    .filter(k => byExpected[k])
+    .map(k => `<div class="pill">${k}: <b>${byExpected[k].pass}/${byExpected[k].total}</b> correct</div>`)
+    .join('');
+}
+
+function renderRows(filter, query) {
+  const rowsEl = document.getElementById('rows');
+  const q = (query || '').toLowerCase().trim();
+
+  const filtered = DATA.filter(d => {
+    if (filter === 'pass' && !d.pass) return false;
+    if (filter === 'fail' && d.pass) return false;
+    if (q) {
+      const hay = (d.request + ' ' + d.reasoning + ' ' + d.output + ' ' + d.expected).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('empty').style.display = filtered.length ? 'none' : 'block';
+
+  rowsEl.innerHTML = filtered.map(d => `
+    <div class="row" data-id="${d.id}">
+      <div class="row-head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="row-id">#${d.id}</span>
+        <span class="row-request">${escapeHtml(d.request)}</span>
+        <span class="decision ${decisionClass(d.expected)}">expected ${d.expected}</span>
+        <span class="badge ${d.pass ? 'pass' : 'fail'}">${d.pass ? 'PASS' : 'FAIL'}</span>
+        <span class="chev">▶</span>
+      </div>
+      <div class="row-body">
+        <div class="field">
+          <div class="k">Answer key reasoning</div>
+          <div class="v">${escapeHtml(d.reasoning)}</div>
+        </div>
+        <div class="field">
+          <div class="k">Model output (${d.decision.toLowerCase()})</div>
+          <div class="v mono">${escapeHtml(d.output)}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+let currentFilter = 'all';
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderRows(currentFilter, document.getElementById('search').value);
+  });
+});
+document.getElementById('search').addEventListener('input', (e) => {
+  renderRows(currentFilter, e.target.value);
+});
+
+renderStats();
+renderRows('all', '');
+</script>
+</body>
+</html>
