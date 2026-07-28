@@ -76,6 +76,13 @@ your browser off `policy-engine.js`, no API key or server involved. It's the
 fastest way to get a feel for how the policy actually behaves before reading
 the 105 test cases one by one.
 
+There's also an "Ask the real model" button next to the simulator that sends
+your exact inputs to `claude-sonnet-5` and shows whether its answer matches
+the rules engine. That call goes through a small Cloudflare Worker I wrote
+that holds the Anthropic API key server-side, so it's never exposed in the
+browser, and rate-limits requests per visitor. It's a real live model call,
+not a canned response.
+
 ## Setup
 
 You'll need [Node.js](https://nodejs.org/) 18 or later.
