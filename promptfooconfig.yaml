@@ -1,4 +1,4 @@
-description: "IAM access-policy compliance checker — does the LLM apply a written access policy correctly?"
+description: "IAM access-policy compliance checker (v2) — does the LLM apply a written access policy, with 10 named systems and 90 test scenarios, correctly?"
 
 prompts:
   - file://prompt.txt
