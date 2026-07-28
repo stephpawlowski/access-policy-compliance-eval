@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Access Policy Compliance Checker — Eval Results</title>
+<title>Access Policy Compliance Checker — Eval Results &amp; Simulator</title>
 <style>
   :root {
     --bg: #0f1115;
@@ -17,6 +17,8 @@
     --pass-bg: rgba(76,175,125,0.12);
     --fail: #e0654f;
     --fail-bg: rgba(224,101,79,0.12);
+    --pending: #9aa1ac;
+    --pending-bg: rgba(154,161,172,0.12);
     --approve: #4caf7d;
     --deny: #e0654f;
     --escalate: #d8a83e;
@@ -32,14 +34,87 @@
   .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 20px 80px; }
   header { margin-bottom: 32px; }
   h1 { font-size: 1.6rem; margin: 0 0 8px; }
-  .subtitle { color: var(--muted); font-size: 0.95rem; max-width: 640px; }
+  .subtitle { color: var(--muted); font-size: 0.95rem; max-width: 680px; }
   .subtitle a { color: var(--accent); }
+
+  .section-title { font-size: 1.05rem; font-weight: 600; margin: 0 0 4px; }
+  .section-sub { color: var(--muted); font-size: 0.85rem; margin: 0 0 16px; max-width: 680px; }
+
+  .simulator {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 40px;
+  }
+  .sim-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .sim-field label {
+    display: block;
+    color: var(--muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  .sim-field select {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+  }
+  .sim-flags {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .sim-flags label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .sim-flags input { width: 16px; height: 16px; }
+  .sim-result {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 16px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .sim-decision {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    flex-shrink: 0;
+  }
+  .sim-decision.approve { color: var(--approve); }
+  .sim-decision.deny { color: var(--deny); }
+  .sim-decision.escalate { color: var(--escalate); }
+  .sim-citation { font-size: 0.88rem; color: var(--text); flex: 1; min-width: 200px; }
+  .sim-rule { color: var(--muted); font-size: 0.78rem; }
 
   .stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 12px;
-    margin: 28px 0;
+    margin: 12px 0 28px;
   }
   .stat {
     background: var(--panel);
@@ -124,6 +199,7 @@
   }
   .badge.pass { background: var(--pass-bg); color: var(--pass); }
   .badge.fail { background: var(--fail-bg); color: var(--fail); }
+  .badge.pending { background: var(--pending-bg); color: var(--pending); }
   .decision {
     font-size: 0.72rem;
     font-weight: 600;
@@ -151,6 +227,16 @@
 
   .empty { color: var(--muted); text-align: center; padding: 40px 0; font-size: 0.9rem; }
 
+  .banner {
+    background: rgba(216,168,62,0.1);
+    border: 1px solid rgba(216,168,62,0.35);
+    color: #d8a83e;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    margin-bottom: 28px;
+  }
+
   footer { margin-top: 40px; color: var(--muted); font-size: 0.8rem; }
   footer a { color: var(--accent); }
 </style>
@@ -160,12 +246,56 @@
   <header>
     <h1>Access Policy Compliance Checker</h1>
     <div class="subtitle">
-      30 hypothetical IAM access requests, scored against a self-written answer key
-      to see whether an LLM applies a written access policy the way a human reviewer
-      would. Model tested: <code>claude-sonnet-5</code>.
+      A written IAM access policy (5 roles, 6 departments, 10 named systems), a rules engine
+      that encodes it, and 90 test scenarios checking whether an LLM applies the policy the
+      way a human reviewer would. Try the simulator below, or scroll down for the eval results.
       Full write-up on <a href="https://github.com/stephpawlowski/access-policy-compliance-eval" target="_blank" rel="noopener">GitHub</a>.
     </div>
   </header>
+
+  <div class="simulator">
+    <div class="section-title">Try it yourself</div>
+    <div class="section-sub">
+      Pick a scenario and see what the policy says, instantly. This runs entirely in your
+      browser against the same rules engine used to generate the 90 test cases below, no
+      API key or model call involved.
+    </div>
+    <div class="sim-grid">
+      <div class="sim-field">
+        <label for="sim-role">Role</label>
+        <select id="sim-role"></select>
+      </div>
+      <div class="sim-field">
+        <label for="sim-department">Department</label>
+        <select id="sim-department"></select>
+      </div>
+      <div class="sim-field">
+        <label for="sim-resource">Requested system</label>
+        <select id="sim-resource"></select>
+      </div>
+      <div class="sim-field">
+        <label for="sim-approvals">Prior approvals</label>
+        <select id="sim-approvals">
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="2">2+</option>
+        </select>
+      </div>
+    </div>
+    <div class="sim-flags">
+      <label><input type="checkbox" id="sim-offboarding"> Account in offboarding</label>
+      <label><input type="checkbox" id="sim-incident"> Active security incident</label>
+    </div>
+    <div class="sim-result" id="sim-result"></div>
+  </div>
+
+  <div class="section-title">Eval results</div>
+  <div class="section-sub" id="results-sub"></div>
+  <div class="banner" id="pending-banner" style="display:none;">
+    Results pending: this page ships with all 90 generated scenarios and their expected
+    answers, but the model hasn't been run against them yet on this page. Once the eval runs,
+    this section fills in with pass/fail and the model's actual output for every case.
+  </div>
 
   <div class="stats" id="stats"></div>
   <div class="breakdown" id="breakdown"></div>
@@ -181,16 +311,23 @@
   <div class="empty" id="empty" style="display:none;">No matching test cases.</div>
 
   <footer>
-    Static page, no live API calls. Data generated by <a href="https://www.promptfoo.dev/" target="_blank" rel="noopener">promptfoo</a>
-    on Jul 27, 2026. Rebuild by re-running the eval and regenerating this page.
+    Static page, no live API calls except where noted. Data generated by <a href="https://www.promptfoo.dev/" target="_blank" rel="noopener">promptfoo</a>.
+    Rebuild by re-running the eval and regenerating this page.
   </footer>
 </div>
 
+<script src="policy-engine.js"></script>
 <script>
-const DATA = [{"id": 1, "request": "Requester is a Contractor on a 3-month SOW for the Payments API redesign. They request read-only access to the Payments API documentation and design repo, which is directly within their SOW scope.", "expected": "approve", "reasoning": "Rule 1: contractors get read-only access to systems relevant to their SOW.", "output": "APPROVE\n\nRule 1 permits contractors read-only access to systems relevant to their SOW, and this request is within scope and non-production per Rule 4.", "decision": "APPROVE", "pass": true}, {"id": 2, "request": "Requester is a Contractor working on the mobile app. They request write access to the mobile app repo so they can push commits directly instead of submitting PRs.", "expected": "deny", "reasoning": "Rule 1: contractors may never be granted write access, regardless of justification.", "output": "DENY\n\nRule 1 prohibits contractors from ever being granted write access, regardless of circumstances.", "decision": "DENY", "pass": true}, {"id": 3, "request": "Requester is a Contractor doing financial modeling work for the Finance team. They request access to the billing/financial systems to pull invoice data.", "expected": "deny", "reasoning": "Rules 1 and 2: contractors never get billing access, and billing access is Finance-FTE-only.", "output": "DENY\nRule 2 restricts billing/financial-systems access to full-time Finance employees only, and Rule 1 prohibits contractors from receiving billing access regardless of the requester's role or purpose.", "decision": "DENY", "pass": true}, {"id": 4, "request": "Requester is the VP of Engineering (FTE). They request billing system access, noting they approve their team's cloud spend budget every quarter.", "expected": "deny", "reasoning": "Rule 2: billing access is Finance-FTE-only, no exceptions for seniority or other departments.", "output": "DENY\nRule 2 restricts billing/financial-systems access to full-time employees on the Finance team, with no exceptions for other departments regardless of seniority, so the VP of Engineering's request must be denied.", "decision": "DENY", "pass": true}, {"id": 5, "request": "Requester is a Finance department FTE (Senior Accountant). They request access to the billing system to reconcile monthly invoices, which is part of their job function.", "expected": "approve", "reasoning": "Rule 2: full-time Finance employees are exactly who billing access is for.", "output": "APPROVE\nRule 2 permits billing/financial-systems access for full-time employees on the Finance team, and this request qualifies directly.", "decision": "APPROVE", "pass": true}, {"id": 6, "request": "Requester is a Contractor placed with the Finance team for a 6-month AP automation project. They request billing system access to test the automation against real invoice data.", "expected": "deny", "reasoning": "Rule 1 overrides: contractors never get billing access even when embedded in Finance.", "output": "DENY\nRule 1 prohibits contractors from ever receiving write, admin, or billing access, and Rule 2 restricts billing access to full-time Finance employees only, so this contractor's request must be denied regardless of department placement.", "decision": "DENY", "pass": true}, {"id": 7, "request": "Requester is an IT Admin (FTE) who wants to grant themselves billing system access 'to help troubleshoot a Finance ticket faster.'", "expected": "deny", "reasoning": "Rule 3: admins cannot override the Finance-only billing restriction, including for themselves.", "output": "DENY\n\nRule 2 restricts billing/financial-systems access to full-time Finance employees with no exceptions, and Rule 3 confirms an Admin cannot override this restriction even for themselves.", "decision": "DENY", "pass": true}, {"id": 8, "request": "Requester is an Admin (FTE) asking to grant a Contractor temporary write access to a shared repo 'just for this one urgent fix.'", "expected": "deny", "reasoning": "Rule 3: admins cannot override the contractor read-only limit for anyone.", "output": "DENY\n\nRule 1 prohibits contractors from ever being granted write access, and Rule 3 confirms an admin cannot override this restriction regardless of urgency or seniority.", "decision": "DENY", "pass": true}, {"id": 9, "request": "Requester is an Engineering FTE. They request access to the production customer database to debug a reported data issue.", "expected": "approve", "reasoning": "Rule 4a: FTE + Engineering department qualifies for production access.", "output": "APPROVE\n\nRule 4: Requester is an FTE in the Engineering department, which satisfies the requirement for production system access.", "decision": "APPROVE", "pass": true}, {"id": 10, "request": "Requester is a Security team FTE. They request temporary admin access to the production deploy pipeline to contain an active incident.", "expected": "approve", "reasoning": "Rule 9: Security FTEs get auto-approved elevated access for incident response (logged for 24hr review).", "output": "APPROVE\nRule 9 permits Security team FTEs to request elevated/admin access for incident response, which is auto-approved subject to retroactive review within 24 hours.", "decision": "APPROVE", "pass": true}, {"id": 11, "request": "Requester is a Sales FTE. They request access to the production customer database to 'better understand customer usage patterns' for a sales pitch. No security approval is mentioned.", "expected": "deny", "reasoning": "Rule 4: production access requires Engineering/Security membership or written Security admin approval; neither applies.", "output": "DENY\nRule 4 requires FTE status plus Engineering/Security membership or explicit Security-admin written approval for production access, and this Sales FTE meets neither condition.", "decision": "DENY", "pass": true}, {"id": 12, "request": "Requester is a Sales FTE. They request access to the production customer database for a customer escalation, and the request includes written approval from a named Security team admin attached to the ticket.", "expected": "approve", "reasoning": "Rule 4b: written Security admin approval satisfies the production-access requirement.", "output": "APPROVE\nRule 4(b) permits production access for an FTE with explicit written approval from a Security team admin, which this Sales FTE request satisfies.", "decision": "APPROVE", "pass": true}, {"id": 13, "request": "Requester is a Contractor on the QA team. They request read-only access to the staging/sandbox environment to run test cases per their SOW.", "expected": "approve", "reasoning": "Rules 1 and 4: contractors can get read-only, non-production access relevant to their SOW.", "output": "APPROVE\nRule 1 permits contractors read-only access relevant to their SOW, and rule 4 permits contractors read-only, non-production access (staging/sandbox qualifies as non-production).", "decision": "APPROVE", "pass": true}, {"id": 14, "request": "Requester is a Contractor. They request access to the production deploy tooling so they can 'help out with a release this week.'", "expected": "deny", "reasoning": "Rule 4: contractors may never be granted production access, only non-production.", "output": "DENY\nRule 4 explicitly states contractors may never be granted production access (production is limited to FTEs in Engineering/Security or with Security admin written approval), and Rule 1 confirms contractors are restricted to read-only access relevant to their SOW.", "decision": "DENY", "pass": true}, {"id": 15, "request": "Requester is an Intern on the Engineering team. Their sponsoring manager is a regular FTE (not an Admin). The intern requests write access to a production repo.", "expected": "deny", "reasoning": "Rule 5: without an Admin sponsor co-signing in writing, an intern's ceiling is contractor-level (read-only, non-prod) \u2014 write/prod access is denied outright.", "output": "DENY\nRule 5 caps Interns at read-only, non-production access since their sponsoring manager is a regular FTE (not an Admin co-signing), so write access to a production repo is denied outright.", "decision": "DENY", "pass": true}, {"id": 16, "request": "Requester is an Intern. Their sponsoring manager is an Admin who has co-signed, in writing, a request for broader access than the standard read-only intern ceiling.", "expected": "escalate", "reasoning": "Rule 5: an Admin-sponsor co-signed broader request is explicitly called out as needing human judgment, not auto-approval.", "output": "ESCALATE\n\nRule 5 requires that when an Admin sponsor co-signs a broader request in writing, the request must be escalated rather than auto-approved.", "decision": "ESCALATE", "pass": true}, {"id": 17, "request": "Requester is an Intern on the Support team, sponsored by their FTE manager (not an Admin). They request standard read-only, non-production access to the support ticketing system.", "expected": "approve", "reasoning": "Rule 5: this matches the default intern ceiling (same as contractor: read-only, non-prod, no billing).", "output": "APPROVE\nPer Rule 5, the Intern's access request is within the standard read-only, non-production ceiling, and since the sponsoring manager is not an Admin co-signing a broader request, standard approval applies.", "decision": "APPROVE", "pass": true}, {"id": 18, "request": "Requester is a Sales FTE requesting access to an internal Engineering tool. Their manager has approved the request in writing; the Engineering team's admin has not yet responded.", "expected": "escalate", "reasoning": "Rule 6: cross-department access needs both the requester's manager and the owning department's admin to approve; only one has approved so far.", "output": "ESCALATE\nRule 6: cross-department request requires both the requester's manager and the owning department's admin to approve, and only the manager has approved so far.", "decision": "ESCALATE", "pass": true}, {"id": 19, "request": "Requester is a Sales FTE requesting access to an internal Engineering tool. Both their manager and the Engineering department's admin have approved in writing.", "expected": "approve", "reasoning": "Rule 6: both required approvals are present.", "output": "APPROVE\nRule 6 is satisfied because this is a cross-department request and both the requester's manager and the owning department's (Engineering) admin have approved in writing.", "decision": "APPROVE", "pass": true}, {"id": 20, "request": "Requester is a Sales FTE requesting access to an internal Engineering analytics tool. Neither their manager nor any Engineering admin has approved or been consulted.", "expected": "deny", "reasoning": "Rule 6: cross-department access requires both approvals; here neither exists, so there's no basis to grant it.", "output": "ESCALATE\n\nThis is a cross-department request (Rule 6) requiring approval from both the requester's manager and the owning department's (Engineering) admin, and since neither has approved or been consulted, it must be escalated.", "decision": "ESCALATE", "pass": false}, {"id": 21, "request": "Requester is a former Contractor whose SOW/contract end date was 3 weeks ago. They request renewal of their prior read-only access, saying they 'just need to finish wrapping up some notes.'", "expected": "deny", "reasoning": "Rule 7: any request from someone past their contract end date is denied outright.", "output": "DENY\n\nRule 7 mandates outright denial of any access request from someone whose contract end date has passed, regardless of role or prior access level.", "decision": "DENY", "pass": true}, {"id": 22, "request": "Requester is a former employee who was terminated 2 days ago. They ask to retain their admin access temporarily 'to help hand off open tickets to the team.'", "expected": "deny", "reasoning": "Rule 7: offboarded individuals are denied regardless of role or the reason given.", "output": "DENY\n\nRule 7 mandates outright denial of any access request from someone whose employment end date has passed, regardless of role, past access, or stated justification.", "decision": "DENY", "pass": true}, {"id": 23, "request": "Requester is a People (HR) FTE. They request read-only access to Engineering department personnel records as part of a routine headcount audit.", "expected": "approve", "reasoning": "Rule 8: People team has read-only access to personnel records across all departments by default.", "output": "APPROVE\nRule 8 grants People (HR) read-only access to personnel records across all departments by default, which covers this request.", "decision": "APPROVE", "pass": true}, {"id": 24, "request": "Requester is a People (HR) FTE. They request write access to the HR systems to correct an employee's records. No People-team admin approval is mentioned anywhere in the request.", "expected": "deny", "reasoning": "Rule 8: write access to HR systems requires People-team admin approval, which is absent here.", "output": "ESCALATE\nRule 8 requires People-team admin approval for write access to HR systems, and no such approval is mentioned, so the request cannot be approved as-is and must be escalated for that approval.", "decision": "ESCALATE", "pass": false}, {"id": 25, "request": "Requester is a Security FTE. They request standing admin access to the internal analytics platform, describing it as generally useful for their role rather than tied to any active incident.", "expected": "escalate", "reasoning": "Rule 9 only covers incident-response access; a general, non-incident request falls outside that auto-approval and isn't clearly covered elsewhere, so it needs human judgment.", "output": "ESCALATE\nRule 9 only auto-approves Security FTE admin access for incident response, and since this request is for standing access unrelated to any active incident, it is not clearly covered and must be escalated per Rule 10.", "decision": "ESCALATE", "pass": true}, {"id": 26, "request": "Requester's role is listed only as 'Consultant' with no department specified. They request write access to a shared project repo.", "expected": "escalate", "reasoning": "Rule 10: 'Consultant' isn't a defined role (Employee/Contractor/Intern/Admin/Manager), so this is a genuinely ambiguous case that needs human review.", "output": "ESCALATE\n\"Consultant\" is not a defined role and no department is specified, so per Rule 10 this unclear role/request must be escalated to a human reviewer.", "decision": "ESCALATE", "pass": true}, {"id": 27, "request": "Requester is a Contractor whose signed SOW explicitly lists 'limited write access to the sandbox test repo' as an approved deliverable-support task. They request that sandbox write access.", "expected": "deny", "reasoning": "Rule 1 is written as an absolute ceiling ('never,' 'regardless of who requests it') with no SOW exception carved out, so the policy as written still denies this even though it's the most sympathetic case for an exception.", "output": "DENY\nRule 1 explicitly prohibits contractors from being granted write access under any circumstances, regardless of what the SOW states.", "decision": "DENY", "pass": true}, {"id": 28, "request": "Requester is a Security team Admin (FTE). They request billing/financial system access, justifying it as necessary for an active security incident involving suspected billing fraud.", "expected": "deny", "reasoning": "Rule 2 states billing access is Finance-FTE-only with no exceptions, and rule 9's incident-response carve-out is scoped to 'admin access to any system,' not specifically billing \u2014 the more specific, absolute rule (2) controls.", "output": "DENY\nRule 2 explicitly restricts billing/financial-systems access to full-time Finance employees with no exceptions, and Rule 3 confirms that even an Admin cannot override this Finance-only billing restriction, regardless of the security justification cited under Rule 9.", "decision": "DENY", "pass": true}, {"id": 29, "request": "Requester is an Engineering Manager (FTE) with direct reports. They request access to the production deploy tooling to review a pipeline change before a release.", "expected": "approve", "reasoning": "Rule 4a: FTE + Engineering department qualifies for production access.", "output": "APPROVE\nRule 4: requester is FTE and a member of the Engineering department, satisfying condition (a) for production system access.", "decision": "APPROVE", "pass": true}, {"id": 30, "request": "Requester's role is 'External Auditor' engaged by the board, not defined anywhere in the policy's role list. They request read-only access to financial records for a compliance review.", "expected": "escalate", "reasoning": "Rule 10: an undefined role/relationship isn't covered by rules 1-9, so it should be escalated rather than assumed to fit an existing category.", "output": "ESCALATE\nThe \"External Auditor\" role is not defined in the policy's role list, and financial access is otherwise restricted to full-time Finance employees under Rule 2, so this undefined role/access combination must be escalated per Rule 10.", "decision": "ESCALATE", "pass": true}];
+const SCENARIOS = [{"id":1,"role":"Admin","department":"Engineering","resource":"Production Database","approvals":2,"offboarding":true,"incident_active":false,"request":"An Admin in the Engineering department requests access to Production Database, with two prior manager approvals. The requester's account is in offboarding.","expected":"deny","reasoning":"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."},{"id":2,"role":"Manager","department":"Finance","resource":"Billing System","approvals":0,"offboarding":true,"incident_active":false,"request":"A Manager in the Finance department requests access to Billing System, with no prior manager approvals. The requester's account is in offboarding.","expected":"deny","reasoning":"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."},{"id":3,"role":"Employee","department":"Security","resource":"Incident Response Tools","approvals":0,"offboarding":true,"incident_active":true,"request":"An Employee in the Security department requests access to Incident Response Tools, with no prior manager approvals. The requester's account is in offboarding. There is an active declared security incident.","expected":"deny","reasoning":"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."},{"id":4,"role":"Contractor","department":"Support","resource":"Customer PII","approvals":0,"offboarding":true,"incident_active":false,"request":"A Contractor in the Support department requests access to Customer PII, with no prior manager approvals. The requester's account is in offboarding.","expected":"deny","reasoning":"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."},{"id":5,"role":"Admin","department":"Engineering","resource":"Admin Console","approvals":0,"offboarding":false,"incident_active":false,"request":"An Admin in the Engineering department requests access to Admin Console, with no prior manager approvals.","expected":"approve","reasoning":"Rule 2: Admins have standing access to the Admin Console."},{"id":6,"role":"Admin","department":"Finance","resource":"Admin Console","approvals":0,"offboarding":false,"incident_active":false,"request":"An Admin in the Finance department requests access to Admin Console, with no prior manager approvals.","expected":"approve","reasoning":"Rule 2: Admins have standing access to the Admin Console."},{"id":7,"role":"Manager","department":"Engineering","resource":"Admin Console","approvals":2,"offboarding":false,"incident_active":false,"request":"A Manager in the Engineering department requests access to Admin Console, with two prior manager approvals.","expected":"escalate","reasoning":"Rule 2: Managers with two prior approvals may request Admin Console access, but it still requires final review before granting."},{"id":8,"role":"Manager","department":"Sales","resource":"Admin Console","approvals":2,"offboarding":false,"incident_active":false,"request":"A Manager in the Sales department requests access to Admin Console, with two prior manager approvals.","expected":"escalate","reasoning":"Rule 2: Managers with two prior approvals may request Admin Console access, but it still requires final review before granting."},{"id":9,"role":"Manager","department":"Engineering","resource":"Admin Console","approvals":1,"offboarding":false,"incident_active":false,"request":"A Manager in the Engineering department requests access to Admin Console, with one prior manager approval.","expected":"deny","reasoning":"Rule 2: Admin Console access is restricted to the Admin role, or to Managers with two prior approvals under review."},{"id":10,"role":"Employee","department":"Engineering","resource":"Admin Console","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Engineering department requests access to Admin Console, with no prior manager approvals.","expected":"deny","reasoning":"Rule 2: Admin Console access is restricted to the Admin role, or to Managers with two prior approvals under review."},{"id":11,"role":"Intern","department":"Finance","resource":"Admin Console","approvals":0,"offboarding":false,"incident_active":false,"request":"An Intern in the Finance department requests access to Admin Console, with no prior manager approvals.","expected":"deny","reasoning":"Rule 2: Admin Console access is restricted to the Admin role, or to Managers with two prior approvals under review."},{"id":12,"role":"Employee","department":"Security","resource":"Incident Response Tools","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Security department requests access to Incident Response Tools, with no prior manager approvals.","expected":"approve","reasoning":"Rule 3: Security team members have standing access to incident response tools."},{"id":13,"role":"Intern","department":"Security","resource":"Incident Response Tools","approvals":0,"offboarding":false,"incident_active":false,"request":"An Intern in the Security department requests access to Incident Response Tools, with no prior manager approvals.","expected":"approve","reasoning":"Rule 3: Security team members have standing access to incident response tools."},{"id":14,"role":"Admin","department":"Sales","resource":"Incident Response Tools","approvals":0,"offboarding":false,"incident_active":false,"request":"An Admin in the Sales department requests access to Incident Response Tools, with no prior manager approvals.","expected":"approve","reasoning":"Rule 3: Admins have standing access to incident response tools."},{"id":15,"role":"Admin","department":"Finance","resource":"Incident Response Tools","approvals":0,"offboarding":false,"incident_active":false,"request":"An Admin in the Finance department requests access to Incident Response Tools, with no prior manager approvals.","expected":"approve","reasoning":"Rule 3: Admins have standing access to incident response tools."},{"id":16,"role":"Employee","department":"Engineering","resource":"Incident Response Tools","approvals":1,"offboarding":false,"incident_active":true,"request":"An Employee in the Engineering department requests access to Incident Response Tools, with one prior manager approval. There is an active declared security incident.","expected":"approve","reasoning":"Rule 3: during an active incident, non-Security staff with at least one prior approval are auto-approved for incident response tools."},{"id":17,"role":"Manager","department":"Support","resource":"Incident Response Tools","approvals":2,"offboarding":false,"incident_active":true,"request":"A Manager in the Support department requests access to Incident Response Tools, with two prior manager approvals. There is an active declared security incident.","expected":"approve","reasoning":"Rule 3: during an active incident, non-Security staff with at least one prior approval are auto-approved for incident response tools."},{"id":18,"role":"Employee","department":"Engineering","resource":"Incident Response Tools","approvals":0,"offboarding":false,"incident_active":true,"request":"An Employee in the Engineering department requests access to Incident Response Tools, with no prior manager approvals. There is an active declared security incident.","expected":"escalate","reasoning":"Rule 3: during an active incident, non-Security staff without a prior approval are escalated for expedited review."},{"id":19,"role":"Contractor","department":"Sales","resource":"Incident Response Tools","approvals":0,"offboarding":false,"incident_active":true,"request":"A Contractor in the Sales department requests access to Incident Response Tools, with no prior manager approvals. There is an active declared security incident.","expected":"escalate","reasoning":"Rule 3: during an active incident, non-Security staff without a prior approval are escalated for expedited review."},{"id":20,"role":"Employee","department":"Engineering","resource":"Incident Response Tools","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Engineering department requests access to Incident Response Tools, with no prior manager approvals.","expected":"deny","reasoning":"Rule 3: outside an active incident, incident response tools are limited to the Security team and Admins."},{"id":21,"role":"Manager","department":"Sales","resource":"Incident Response Tools","approvals":1,"offboarding":false,"incident_active":false,"request":"A Manager in the Sales department requests access to Incident Response Tools, with one prior manager approval.","expected":"deny","reasoning":"Rule 3: outside an active incident, incident response tools are limited to the Security team and Admins."},{"id":22,"role":"Intern","department":"Finance","resource":"Payroll System","approvals":0,"offboarding":false,"incident_active":false,"request":"An Intern in the Finance department requests access to Payroll System, with no prior manager approvals.","expected":"escalate","reasoning":"Rule 4: Finance interns need sign-off before accessing financial systems, even within their own department."},{"id":23,"role":"Intern","department":"Finance","resource":"Billing System","approvals":0,"offboarding":false,"incident_active":false,"request":"An Intern in the Finance department requests access to Billing System, with no prior manager approvals.","expected":"escalate","reasoning":"Rule 4: Finance interns need sign-off before accessing financial systems, even within their own department."},{"id":24,"role":"Employee","department":"Finance","resource":"Financial Reports","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Finance department requests access to Financial Reports, with no prior manager approvals.","expected":"approve","reasoning":"Rule 4: Finance department staff have standing access to financial systems."},{"id":25,"role":"Contractor","department":"Finance","resource":"Billing System","approvals":0,"offboarding":false,"incident_active":false,"request":"A Contractor in the Finance department requests access to Billing System, with no prior manager approvals.","expected":"approve","reasoning":"Rule 4: Finance department staff have standing access to financial systems."},{"id":26,"role":"Manager","department":"Sales","resource":"Financial Reports","approvals":1,"offboarding":false,"incident_active":false,"request":"A Manager in the Sales department requests access to Financial Reports, with one prior manager approval.","expected":"escalate","reasoning":"Rule 4: Managers and Admins outside Finance may request access to financial systems with one prior approval, pending further review."},{"id":27,"role":"Admin","department":"Support","resource":"Payroll System","approvals":1,"offboarding":false,"incident_active":false,"request":"An Admin in the Support department requests access to Payroll System, with one prior manager approval.","expected":"escalate","reasoning":"Rule 4: Managers and Admins outside Finance may request access to financial systems with one prior approval, pending further review."},{"id":28,"role":"Employee","department":"Sales","resource":"Billing System","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Sales department requests access to Billing System, with no prior manager approvals.","expected":"deny","reasoning":"Rule 4: financial systems are restricted to the Finance department outside of an approved exception."},{"id":29,"role":"Manager","department":"Engineering","resource":"Financial Reports","approvals":0,"offboarding":false,"incident_active":false,"request":"A Manager in the Engineering department requests access to Financial Reports, with no prior manager approvals.","expected":"deny","reasoning":"Rule 4: financial systems are restricted to the Finance department outside of an approved exception."},{"id":30,"role":"Employee","department":"Support","resource":"Customer PII","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Support department requests access to Customer PII, with no prior manager approvals.","expected":"approve","reasoning":"Rule 5: Support staff have standing access to Customer PII to resolve tickets."},{"id":31,"role":"Intern","department":"Support","resource":"Customer PII","approvals":0,"offboarding":false,"incident_active":false,"request":"An Intern in the Support department requests access to Customer PII, with no prior manager approvals.","expected":"approve","reasoning":"Rule 5: Support staff have standing access to Customer PII to resolve tickets."},{"id":32,"role":"Employee","department":"Security","resource":"Customer PII","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Security department requests access to Customer PII, with no prior manager approvals.","expected":"approve","reasoning":"Rule 5: Security staff have standing access to Customer PII for investigations."},{"id":33,"role":"Employee","department":"Engineering","resource":"Customer PII","approvals":1,"offboarding":false,"incident_active":false,"request":"An Employee in the Engineering department requests access to Customer PII, with one prior manager approval.","expected":"escalate","reasoning":"Rule 5: Engineering may request Customer PII access for debugging with one prior approval, pending further review."},{"id":34,"role":"Contractor","department":"Engineering","resource":"Customer PII","approvals":1,"offboarding":false,"incident_active":false,"request":"A Contractor in the Engineering department requests access to Customer PII, with one prior manager approval.","expected":"escalate","reasoning":"Rule 5: Engineering may request Customer PII access for debugging with one prior approval, pending further review."},{"id":35,"role":"Employee","department":"Engineering","resource":"Customer PII","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Engineering department requests access to Customer PII, with no prior manager approvals.","expected":"deny","reasoning":"Rule 5: Customer PII is restricted to Support and Security, or Engineering with an approval under review."},{"id":36,"role":"Manager","department":"Sales","resource":"Customer PII","approvals":0,"offboarding":false,"incident_active":false,"request":"A Manager in the Sales department requests access to Customer PII, with no prior manager approvals.","expected":"deny","reasoning":"Rule 5: Customer PII is restricted to Support and Security, or Engineering with an approval under review."},{"id":37,"role":"Intern","department":"Engineering","resource":"Production Database","approvals":0,"offboarding":false,"incident_active":false,"request":"An Intern in the Engineering department requests access to Production Database, with no prior manager approvals.","expected":"deny","reasoning":"Rule 6: Interns are denied Production Database access regardless of department."},{"id":38,"role":"Contractor","department":"Engineering","resource":"Production Database","approvals":0,"offboarding":false,"incident_active":false,"request":"A Contractor in the Engineering department requests access to Production Database, with no prior manager approvals.","expected":"escalate","reasoning":"Rule 6: Contractors in Engineering may request Production Database access, but it requires review before granting."},{"id":39,"role":"Employee","department":"Engineering","resource":"Production Database","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Engineering department requests access to Production Database, with no prior manager approvals.","expected":"approve","reasoning":"Rule 6: Engineering employees, managers, and admins have standing access to the Production Database."},{"id":40,"role":"Manager","department":"Engineering","resource":"Production Database","approvals":0,"offboarding":false,"incident_active":false,"request":"A Manager in the Engineering department requests access to Production Database, with no prior manager approvals.","expected":"approve","reasoning":"Rule 6: Engineering employees, managers, and admins have standing access to the Production Database."},{"id":41,"role":"Manager","department":"Sales","resource":"Production Database","approvals":2,"offboarding":false,"incident_active":false,"request":"A Manager in the Sales department requests access to Production Database, with two prior manager approvals.","expected":"escalate","reasoning":"Rule 6: staff outside Engineering may request Production Database access with two prior approvals, pending final review."},{"id":42,"role":"Admin","department":"Support","resource":"Production Database","approvals":2,"offboarding":false,"incident_active":false,"request":"An Admin in the Support department requests access to Production Database, with two prior manager approvals.","expected":"escalate","reasoning":"Rule 6: staff outside Engineering may request Production Database access with two prior approvals, pending final review."},{"id":43,"role":"Employee","department":"Finance","resource":"Production Database","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Finance department requests access to Production Database, with no prior manager approvals.","expected":"deny","reasoning":"Rule 6: Production Database access is restricted to Engineering outside of an approved exception."},{"id":44,"role":"Employee","department":"Finance","resource":"Production Database","approvals":1,"offboarding":false,"incident_active":false,"request":"An Employee in the Finance department requests access to Production Database, with one prior manager approval.","expected":"deny","reasoning":"Rule 6: Production Database access is restricted to Engineering outside of an approved exception."},{"id":45,"role":"Employee","department":"Engineering","resource":"Source Code Repository","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Engineering department requests access to Source Code Repository, with no prior manager approvals.","expected":"approve","reasoning":"Rule 7: Engineering has standing access to the Source Code Repository regardless of role."},{"id":46,"role":"Contractor","department":"Engineering","resource":"Source Code Repository","approvals":0,"offboarding":false,"incident_active":false,"request":"A Contractor in the Engineering department requests access to Source Code Repository, with no prior manager approvals.","expected":"approve","reasoning":"Rule 7: Engineering has standing access to the Source Code Repository regardless of role."},{"id":47,"role":"Intern","department":"Engineering","resource":"Source Code Repository","approvals":0,"offboarding":false,"incident_active":false,"request":"An Intern in the Engineering department requests access to Source Code Repository, with no prior manager approvals.","expected":"approve","reasoning":"Rule 7: Engineering has standing access to the Source Code Repository regardless of role."},{"id":48,"role":"Contractor","department":"Sales","resource":"Source Code Repository","approvals":2,"offboarding":false,"incident_active":false,"request":"A Contractor in the Sales department requests access to Source Code Repository, with two prior manager approvals.","expected":"deny","reasoning":"Rule 7: Contractors outside Engineering are denied Source Code Repository access."},{"id":49,"role":"Contractor","department":"Support","resource":"Source Code Repository","approvals":0,"offboarding":false,"incident_active":false,"request":"A Contractor in the Support department requests access to Source Code Repository, with no prior manager approvals.","expected":"deny","reasoning":"Rule 7: Contractors outside Engineering are denied Source Code Repository access."},{"id":50,"role":"Employee","department":"Sales","resource":"Source Code Repository","approvals":1,"offboarding":false,"incident_active":false,"request":"An Employee in the Sales department requests access to Source Code Repository, with one prior manager approval.","expected":"escalate","reasoning":"Rule 7: staff outside Engineering may request Source Code Repository access with one prior approval, pending further review."},{"id":51,"role":"Employee","department":"Support","resource":"Source Code Repository","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Support department requests access to Source Code Repository, with no prior manager approvals.","expected":"deny","reasoning":"Rule 7: Source Code Repository access outside Engineering requires at least one prior approval."},{"id":52,"role":"Employee","department":"People","resource":"Employee Records","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the People department requests access to Employee Records, with no prior manager approvals.","expected":"approve","reasoning":"Rule 8: People (HR) staff have standing access to Employee Records."},{"id":53,"role":"Manager","department":"Engineering","resource":"Employee Records","approvals":0,"offboarding":false,"incident_active":false,"request":"A Manager in the Engineering department requests access to Employee Records, with no prior manager approvals.","expected":"approve","reasoning":"Rule 8: Managers have standing access to Employee Records for their own direct reports."},{"id":54,"role":"Manager","department":"Sales","resource":"Employee Records","approvals":0,"offboarding":false,"incident_active":false,"request":"A Manager in the Sales department requests access to Employee Records, with no prior manager approvals.","expected":"approve","reasoning":"Rule 8: Managers have standing access to Employee Records for their own direct reports."},{"id":55,"role":"Admin","department":"Finance","resource":"Employee Records","approvals":0,"offboarding":false,"incident_active":false,"request":"An Admin in the Finance department requests access to Employee Records, with no prior manager approvals.","expected":"approve","reasoning":"Rule 8: Admins have standing access to Employee Records."},{"id":56,"role":"Employee","department":"Engineering","resource":"Employee Records","approvals":1,"offboarding":false,"incident_active":false,"request":"An Employee in the Engineering department requests access to Employee Records, with one prior manager approval.","expected":"escalate","reasoning":"Rule 8: non-managers outside People may request Employee Records access with one prior approval, pending further review."},{"id":57,"role":"Contractor","department":"Support","resource":"Employee Records","approvals":1,"offboarding":false,"incident_active":false,"request":"A Contractor in the Support department requests access to Employee Records, with one prior manager approval.","expected":"escalate","reasoning":"Rule 8: non-managers outside People may request Employee Records access with one prior approval, pending further review."},{"id":58,"role":"Employee","department":"Sales","resource":"Employee Records","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Sales department requests access to Employee Records, with no prior manager approvals.","expected":"deny","reasoning":"Rule 8: Employee Records are restricted to People, Managers, and Admins outside of an approved exception."},{"id":59,"role":"Intern","department":"Engineering","resource":"Employee Records","approvals":0,"offboarding":false,"incident_active":false,"request":"An Intern in the Engineering department requests access to Employee Records, with no prior manager approvals.","expected":"deny","reasoning":"Rule 8: Employee Records are restricted to People, Managers, and Admins outside of an approved exception."},{"id":60,"role":"Employee","department":"Finance","resource":"Vendor Contracts","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Finance department requests access to Vendor Contracts, with no prior manager approvals.","expected":"approve","reasoning":"Rule 9: Finance has standing access to Vendor Contracts."},{"id":61,"role":"Manager","department":"Sales","resource":"Vendor Contracts","approvals":0,"offboarding":false,"incident_active":false,"request":"A Manager in the Sales department requests access to Vendor Contracts, with no prior manager approvals.","expected":"approve","reasoning":"Rule 9: Sales Managers and Admins have standing access to Vendor Contracts."},{"id":62,"role":"Admin","department":"Sales","resource":"Vendor Contracts","approvals":0,"offboarding":false,"incident_active":false,"request":"An Admin in the Sales department requests access to Vendor Contracts, with no prior manager approvals.","expected":"approve","reasoning":"Rule 9: Sales Managers and Admins have standing access to Vendor Contracts."},{"id":63,"role":"Employee","department":"Sales","resource":"Vendor Contracts","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Sales department requests access to Vendor Contracts, with no prior manager approvals.","expected":"escalate","reasoning":"Rule 9: Sales staff below Manager level may request Vendor Contracts access, pending further review."},{"id":64,"role":"Intern","department":"Sales","resource":"Vendor Contracts","approvals":0,"offboarding":false,"incident_active":false,"request":"An Intern in the Sales department requests access to Vendor Contracts, with no prior manager approvals.","expected":"escalate","reasoning":"Rule 9: Sales staff below Manager level may request Vendor Contracts access, pending further review."},{"id":65,"role":"Employee","department":"Engineering","resource":"Vendor Contracts","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Engineering department requests access to Vendor Contracts, with no prior manager approvals.","expected":"deny","reasoning":"Rule 9: Vendor Contracts are restricted to Finance and Sales leadership outside of an approved exception."},{"id":66,"role":"Employee","department":"Support","resource":"Vendor Contracts","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the Support department requests access to Vendor Contracts, with no prior manager approvals.","expected":"deny","reasoning":"Rule 9: Vendor Contracts are restricted to Finance and Sales leadership outside of an approved exception."},{"id":67,"role":"Employee","department":"Engineering","resource":"Other / Unlisted System","approvals":2,"offboarding":false,"incident_active":false,"request":"An Employee in the Engineering department requests access to Other / Unlisted System, with two prior manager approvals.","expected":"approve","reasoning":"Rule 10: requests for systems not explicitly covered by this policy are approved once two prior approvals have been obtained."},{"id":68,"role":"Manager","department":"Sales","resource":"Other / Unlisted System","approvals":2,"offboarding":false,"incident_active":false,"request":"A Manager in the Sales department requests access to Other / Unlisted System, with two prior manager approvals.","expected":"approve","reasoning":"Rule 10: requests for systems not explicitly covered by this policy are approved once two prior approvals have been obtained."},{"id":69,"role":"Employee","department":"Support","resource":"Other / Unlisted System","approvals":1,"offboarding":false,"incident_active":false,"request":"An Employee in the Support department requests access to Other / Unlisted System, with one prior manager approval.","expected":"escalate","reasoning":"Rule 10: requests for systems not explicitly covered by this policy are escalated for review with one prior approval."},{"id":70,"role":"Contractor","department":"Finance","resource":"Other / Unlisted System","approvals":1,"offboarding":false,"incident_active":false,"request":"A Contractor in the Finance department requests access to Other / Unlisted System, with one prior manager approval.","expected":"escalate","reasoning":"Rule 10: requests for systems not explicitly covered by this policy are escalated for review with one prior approval."},{"id":71,"role":"Employee","department":"People","resource":"Other / Unlisted System","approvals":0,"offboarding":false,"incident_active":false,"request":"An Employee in the People department requests access to Other / Unlisted System, with no prior manager approvals.","expected":"deny","reasoning":"Rule 10: requests for systems not explicitly covered by this policy are denied without at least one prior approval."},{"id":72,"role":"Intern","department":"Security","resource":"Other / Unlisted System","approvals":0,"offboarding":false,"incident_active":false,"request":"An Intern in the Security department requests access to Other / Unlisted System, with no prior manager approvals.","expected":"deny","reasoning":"Rule 10: requests for systems not explicitly covered by this policy are denied without at least one prior approval."},{"id":73,"role":"Manager","department":"Sales","resource":"Production Database","approvals":0,"offboarding":false,"incident_active":true,"request":"A Manager in the Sales department requests access to Production Database, with no prior manager approvals. There is an active declared security incident.","expected":"deny","reasoning":"Rule 6: Production Database access is restricted to Engineering outside of an approved exception."},{"id":74,"role":"Contractor","department":"People","resource":"Other / Unlisted System","approvals":2,"offboarding":false,"incident_active":true,"request":"A Contractor in the People department requests access to Other / Unlisted System, with two prior manager approvals. There is an active declared security incident.","expected":"approve","reasoning":"Rule 10: requests for systems not explicitly covered by this policy are approved once two prior approvals have been obtained."},{"id":75,"role":"Employee","department":"Support","resource":"Vendor Contracts","approvals":0,"offboarding":false,"incident_active":true,"request":"An Employee in the Support department requests access to Vendor Contracts, with no prior manager approvals. There is an active declared security incident.","expected":"deny","reasoning":"Rule 9: Vendor Contracts are restricted to Finance and Sales leadership outside of an approved exception."},{"id":76,"role":"Manager","department":"People","resource":"Billing System","approvals":2,"offboarding":true,"incident_active":false,"request":"A Manager in the People department requests access to Billing System, with two prior manager approvals. The requester's account is in offboarding.","expected":"deny","reasoning":"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."},{"id":77,"role":"Manager","department":"Support","resource":"Financial Reports","approvals":2,"offboarding":false,"incident_active":false,"request":"A Manager in the Support department requests access to Financial Reports, with two prior manager approvals.","expected":"escalate","reasoning":"Rule 4: Managers and Admins outside Finance may request access to financial systems with one prior approval, pending further review."},{"id":78,"role":"Admin","department":"Support","resource":"Vendor Contracts","approvals":1,"offboarding":false,"incident_active":false,"request":"An Admin in the Support department requests access to Vendor Contracts, with one prior manager approval.","expected":"deny","reasoning":"Rule 9: Vendor Contracts are restricted to Finance and Sales leadership outside of an approved exception."},{"id":79,"role":"Contractor","department":"Security","resource":"Financial Reports","approvals":2,"offboarding":false,"incident_active":false,"request":"A Contractor in the Security department requests access to Financial Reports, with two prior manager approvals.","expected":"deny","reasoning":"Rule 4: financial systems are restricted to the Finance department outside of an approved exception."},{"id":80,"role":"Manager","department":"People","resource":"Vendor Contracts","approvals":2,"offboarding":false,"incident_active":false,"request":"A Manager in the People department requests access to Vendor Contracts, with two prior manager approvals.","expected":"deny","reasoning":"Rule 9: Vendor Contracts are restricted to Finance and Sales leadership outside of an approved exception."},{"id":81,"role":"Employee","department":"Sales","resource":"Production Database","approvals":2,"offboarding":false,"incident_active":false,"request":"An Employee in the Sales department requests access to Production Database, with two prior manager approvals.","expected":"escalate","reasoning":"Rule 6: staff outside Engineering may request Production Database access with two prior approvals, pending final review."},{"id":82,"role":"Admin","department":"Engineering","resource":"Payroll System","approvals":2,"offboarding":false,"incident_active":false,"request":"An Admin in the Engineering department requests access to Payroll System, with two prior manager approvals.","expected":"escalate","reasoning":"Rule 4: Managers and Admins outside Finance may request access to financial systems with one prior approval, pending further review."},{"id":83,"role":"Contractor","department":"People","resource":"Financial Reports","approvals":2,"offboarding":true,"incident_active":false,"request":"A Contractor in the People department requests access to Financial Reports, with two prior manager approvals. The requester's account is in offboarding.","expected":"deny","reasoning":"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."},{"id":84,"role":"Employee","department":"Sales","resource":"Vendor Contracts","approvals":2,"offboarding":false,"incident_active":false,"request":"An Employee in the Sales department requests access to Vendor Contracts, with two prior manager approvals.","expected":"escalate","reasoning":"Rule 9: Sales staff below Manager level may request Vendor Contracts access, pending further review."},{"id":85,"role":"Intern","department":"Sales","resource":"Employee Records","approvals":0,"offboarding":true,"incident_active":true,"request":"An Intern in the Sales department requests access to Employee Records, with no prior manager approvals. The requester's account is in offboarding. There is an active declared security incident.","expected":"deny","reasoning":"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."},{"id":86,"role":"Employee","department":"Finance","resource":"Admin Console","approvals":1,"offboarding":false,"incident_active":false,"request":"An Employee in the Finance department requests access to Admin Console, with one prior manager approval.","expected":"deny","reasoning":"Rule 2: Admin Console access is restricted to the Admin role, or to Managers with two prior approvals under review."},{"id":87,"role":"Intern","department":"People","resource":"Admin Console","approvals":2,"offboarding":false,"incident_active":false,"request":"An Intern in the People department requests access to Admin Console, with two prior manager approvals.","expected":"deny","reasoning":"Rule 2: Admin Console access is restricted to the Admin role, or to Managers with two prior approvals under review."},{"id":88,"role":"Manager","department":"Finance","resource":"Admin Console","approvals":2,"offboarding":false,"incident_active":false,"request":"A Manager in the Finance department requests access to Admin Console, with two prior manager approvals.","expected":"escalate","reasoning":"Rule 2: Managers with two prior approvals may request Admin Console access, but it still requires final review before granting."},{"id":89,"role":"Manager","department":"Support","resource":"Customer PII","approvals":0,"offboarding":false,"incident_active":false,"request":"A Manager in the Support department requests access to Customer PII, with no prior manager approvals.","expected":"approve","reasoning":"Rule 5: Support staff have standing access to Customer PII to resolve tickets."},{"id":90,"role":"Admin","department":"Engineering","resource":"Admin Console","approvals":1,"offboarding":false,"incident_active":true,"request":"An Admin in the Engineering department requests access to Admin Console, with one prior manager approval. There is an active declared security incident.","expected":"approve","reasoning":"Rule 2: Admins have standing access to the Admin Console."}];
+
+// Pages ship with either full results (id, role, department, resource, approvals,
+// offboarding, incident_active, request, expected, reasoning, output, decision, pass)
+// or pending scenarios (same, minus output/decision/pass) before the eval has run.
+const DATA = SCENARIOS;
+const HAS_RESULTS = DATA.length > 0 && DATA[0].pass !== undefined;
 
 function decisionClass(d) {
-  d = d.toLowerCase();
+  d = String(d).toLowerCase();
   if (d.includes('approve')) return 'approve';
   if (d.includes('deny')) return 'deny';
   if (d.includes('escalate')) return 'escalate';
@@ -199,9 +336,24 @@ function decisionClass(d) {
 
 function renderStats() {
   const total = DATA.length;
+  document.getElementById('pending-banner').style.display = HAS_RESULTS ? 'none' : 'block';
+
+  if (!HAS_RESULTS) {
+    document.getElementById('results-sub').textContent =
+      total + ' generated scenarios, covering every branch of all 10 rules at least twice.';
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="num">${total}</div><div class="label">Test cases</div></div>
+    `;
+    document.getElementById('breakdown').innerHTML = '';
+    return;
+  }
+
   const passed = DATA.filter(d => d.pass).length;
   const failed = total - passed;
   const acc = ((passed / total) * 100).toFixed(1);
+
+  document.getElementById('results-sub').textContent =
+    total + ' generated scenarios, model tested against every one.';
 
   document.getElementById('stats').innerHTML = `
     <div class="stat accuracy"><div class="num">${acc}%</div><div class="label">Accuracy</div></div>
@@ -229,10 +381,10 @@ function renderRows(filter, query) {
   const q = (query || '').toLowerCase().trim();
 
   const filtered = DATA.filter(d => {
-    if (filter === 'pass' && !d.pass) return false;
-    if (filter === 'fail' && d.pass) return false;
+    if (HAS_RESULTS && filter === 'pass' && !d.pass) return false;
+    if (HAS_RESULTS && filter === 'fail' && d.pass) return false;
     if (q) {
-      const hay = (d.request + ' ' + d.reasoning + ' ' + d.output + ' ' + d.expected).toLowerCase();
+      const hay = (d.request + ' ' + d.reasoning + ' ' + d.expected + ' ' + (d.output || '')).toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -240,13 +392,23 @@ function renderRows(filter, query) {
 
   document.getElementById('empty').style.display = filtered.length ? 'none' : 'block';
 
-  rowsEl.innerHTML = filtered.map(d => `
+  rowsEl.innerHTML = filtered.map(d => {
+    const statusBadge = HAS_RESULTS
+      ? `<span class="badge ${d.pass ? 'pass' : 'fail'}">${d.pass ? 'PASS' : 'FAIL'}</span>`
+      : `<span class="badge pending">PENDING</span>`;
+    const outputField = HAS_RESULTS
+      ? `<div class="field">
+           <div class="k">Model output (${String(d.decision).toLowerCase()})</div>
+           <div class="v mono">${escapeHtml(d.output)}</div>
+         </div>`
+      : '';
+    return `
     <div class="row" data-id="${d.id}">
       <div class="row-head" onclick="this.parentElement.classList.toggle('open')">
         <span class="row-id">#${d.id}</span>
         <span class="row-request">${escapeHtml(d.request)}</span>
         <span class="decision ${decisionClass(d.expected)}">expected ${d.expected}</span>
-        <span class="badge ${d.pass ? 'pass' : 'fail'}">${d.pass ? 'PASS' : 'FAIL'}</span>
+        ${statusBadge}
         <span class="chev">▶</span>
       </div>
       <div class="row-body">
@@ -254,13 +416,11 @@ function renderRows(filter, query) {
           <div class="k">Answer key reasoning</div>
           <div class="v">${escapeHtml(d.reasoning)}</div>
         </div>
-        <div class="field">
-          <div class="k">Model output (${d.decision.toLowerCase()})</div>
-          <div class="v mono">${escapeHtml(d.output)}</div>
-        </div>
+        ${outputField}
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function escapeHtml(s) {
@@ -284,6 +444,42 @@ document.getElementById('search').addEventListener('input', (e) => {
 
 renderStats();
 renderRows('all', '');
+
+// --- Simulator ---
+function populateSelect(id, options) {
+  const el = document.getElementById(id);
+  el.innerHTML = options.map(o => `<option value="${o}">${o}</option>`).join('');
+}
+populateSelect('sim-role', PolicyEngine.ROLES);
+populateSelect('sim-department', PolicyEngine.DEPARTMENTS);
+populateSelect('sim-resource', PolicyEngine.RESOURCES);
+
+function runSimulator() {
+  const input = {
+    role: document.getElementById('sim-role').value,
+    department: document.getElementById('sim-department').value,
+    resource: document.getElementById('sim-resource').value,
+    approvals: Number(document.getElementById('sim-approvals').value),
+    offboarding: document.getElementById('sim-offboarding').checked,
+    incidentActive: document.getElementById('sim-incident').checked,
+  };
+  const verdict = PolicyEngine.evaluate(input);
+  const cls = verdict.decision.toLowerCase();
+  document.getElementById('sim-result').innerHTML = `
+    <span class="sim-decision ${cls}">${verdict.decision}</span>
+    <span class="sim-citation">${escapeHtml(verdict.citation)}</span>
+    <span class="sim-rule">${verdict.rule}</span>
+  `;
+}
+
+['sim-role', 'sim-department', 'sim-resource', 'sim-approvals'].forEach(id => {
+  document.getElementById(id).addEventListener('change', runSimulator);
+});
+['sim-offboarding', 'sim-incident'].forEach(id => {
+  document.getElementById(id).addEventListener('change', runSimulator);
+});
+
+runSimulator();
 </script>
 </body>
 </html>
