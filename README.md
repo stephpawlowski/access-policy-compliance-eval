@@ -74,7 +74,7 @@ whether the account is offboarding or there's an active incident, and it'll
 tell you the decision and which rule produced it. That part runs entirely in
 your browser off `policy-engine.js`, no API key or server involved. It's the
 fastest way to get a feel for how the policy actually behaves before reading
-the 90 test cases one by one.
+the 105 test cases one by one.
 
 ## Setup
 
@@ -107,7 +107,7 @@ node scripts/generate-scenarios.js > tests.csv
 npm run eval -- -o results.json
 ```
 
-That runs all 90 cases, prints a pass/fail summary with overall accuracy, and
+That runs all 105 cases, prints a pass/fail summary with overall accuracy, and
 saves the full results to `results.json`. For a browsable view of each
 individual result:
 
@@ -120,97 +120,78 @@ useful part once you're past the first run.
 
 ## What I found
 
-> **Note:** the numbers below are from the v2 run (90 scenarios). v3 adds 15
-> adversarial cases on top of that set (105 total) and hasn't been re-run
-> against the model yet — the dashboard shows those new cases as pending
-> until that happens. The analysis below is kept because the failure
-> categories it identifies are still the most interesting part of this
-> project and directly motivated v3's adversarial cases.
+Model tested: `claude-sonnet-5`, one provider. This is the v3 run: all 105
+scenarios, including the 15 new adversarial cases.
 
-Model tested: `claude-sonnet-5`, one provider.
+**104 out of 105 correct (99.05%)** — every one of the 15 adversarial cases
+passed, including the direct-report ambiguity checks that v3 added
+specifically because v2's own findings had surfaced a real gap in how the
+Employee Records rule was being tested (see below). By expected decision:
+38/39 on deny, 34/34 on approve, 32/32 on escalate.
 
-**84 out of 90 correct (93.3%)** — same overall percentage as v1, at three times
-the scale. By expected decision: 31/35 on deny, 28/30 on approve, 25/25 on
-escalate.
+Both issues that showed up in the v2 run are gone in this one, and for the
+reasons I expected: the rule-threshold miss (a Manager with one approval
+requesting Admin Console access) is now answered correctly, and the two
+answer-key gaps around "Manager access to Employee Records" are resolved
+now that the scenario generator explicitly states whether the records belong
+to the manager's own direct report. Fixing the test generator fixed the
+model's score, not the other way around — which is itself worth noting: some
+of what looks like "the model got it wrong" in an eval is actually "the eval
+didn't specify enough for a careful reader to get it right."
 
-That 93.3% landing in the exact same spot as v1 looks like a coincidence at
-first, but the six misses this time are a genuinely different, more
-interesting mix than v1's two. Only one of them is a clean rule-application
-error. The rest split between a model quirk and a problem with my own answer
-key.
+### The one remaining miss is a formatting quirk, not a policy error
 
-### Half the misses aren't reasoning errors, they're a formatting problem
-
-Three of the six (ids 35, 73, 79) show the same pattern: the model reasons out
-loud, states a decision, catches itself mid-response, and corrects to the
-right answer, like this one on Financial Reports:
+Row 59: an Intern in Engineering requesting Employee Records with zero
+prior approvals. Expected: DENY. The model's raw output:
 
 > ESCALATE
 >
-> Wait, let me correct this per Rule 4.
+> Rule 8: Employee Records — Intern is not HR, Manager, or Admin, and has 0
+> prior approvals, so per the "everyone else" clause with zero approvals
+> this would normally be a Deny; however, since the requester is not a
+> Manager, the "own direct reports" ambiguity does not apply, and with 0
+> prior approvals the correct outcome under Rule 8 is Deny.
+>
+> **Correction:**
 >
 > DENY
-> Rule 4: Financial Reports is Finance-restricted; the requester is not
-> Finance and not a Manager/Admin, so as a Contractor they are denied
-> outright.
+> Rule 8 applies: Employee Records access outside HR/Manager/Admin requires
+> at least one prior approval to escalate, and since this Intern has zero
+> prior approvals, the request is denied.
 
-The final answer (DENY) is correct. But the prompt asks for the decision on
-line one, and my grading script only reads line one, so all three of these
-get scored as failures even though the model talked its way to the right call
-by the end. This is the same category of thing I ran into with the grading
-bug in the benefits-Q&A project: the eval's failure count and the model's
-actual reasoning accuracy aren't the same number. If I graded on the last
-decision line instead of the first, this eval would be 87/90 (96.7%), not
-93.3%. I kept first-line grading because it's what the prompt instructs and
-changing the grading criteria after seeing the results would be moving the
-goalposts, but it's worth knowing the model is scoring worse here for not
-following instructions than for actually misapplying the policy.
-
-### One real rule-application miss
-
-Row 9: a Manager in Engineering requesting Admin Console access, with exactly
-one prior approval. Rule 2 says Managers need *two* approvals to even be
-escalated, otherwise it's a denial. The model escalated anyway, and its own
-stated reasoning shows it noticing the mismatch and waving it off: "though the
-policy specifies two prior approvals, this is the applicable rule category."
-That's a genuine miss. It correctly recalled the rule and then didn't apply
-the threshold in it.
-
-### Two misses that are actually a problem with my answer key, not the model
-
-Rows 53 and 54: a Manager (in Engineering, then in Sales) requesting Employee
-Records, zero prior approvals. My answer key says approve, because the
-policy-engine rule for Employee Records treats "Manager" as blanket standing
-access. But Rule 8, as written, only grants that access "for their own direct
-reports," and none of my generated request sentences actually say whose
-records are being requested. The model noticed exactly that gap and denied,
-reasoning: "a Manager only has standing access to Employee Records for their
-own direct reports (not indicated here)." That's a more careful reading of
-the policy than my own test generator did. I simplified "Manager access is
-scoped to their reports" down to "Manager role → approve" when I coded the
-engine, and these two rows are the answer key paying for that simplification.
-A v3 fix would add an explicit "requesting own report's records: yes/no" field
-to the scenario generator instead of assuming it away.
+The model talks itself into the wrong answer, catches the mistake mid-stream,
+and corrects to the right one. But my grading script only reads the first
+line — as instructed by the prompt — so this scores as a fail even though the
+final, considered answer is correct. This is the exact same failure mode I
+saw three times in the v2 run (ids 35, 73, and 79 back then), just down to
+one instance now that the answer-key gaps are fixed. If I graded on the last
+decision line instead of the first, this eval would be 105/105 (100%), not
+99.05%. I'm keeping first-line grading, since that's what the prompt actually
+instructs and changing the grading criteria after seeing the results would be
+moving the goalposts — but it's worth flagging that the one point separating
+"perfect" from "99%" here is a formatting habit, not a misapplied rule.
 
 ### Take away
 
-93.3% held steady from v1 to v2, but the composition of what's actually wrong
-changed a lot once the test set got harder to game. Half the misses here are
-better described as "didn't format its final answer as instructed" than
-"got the policy wrong," and a third of the misses are cases where the model's
-reading of the policy was arguably more careful than the answer key it was
-being graded against. If I were scoring a real IAM reviewer on this same
-material, I'd care more about whether they reach the correct decision by the
-end of a written justification than whether it's the very first line, and I'd
-also go double-check whether "Manager access to Employee Records" is scoped
-the way I assumed before I docked anyone for getting it "wrong."
+Going from 93.3% (v2, 90 cases, several real answer-key gaps) to 99.05% (v3,
+105 cases including 15 adversarial ones, no answer-key gaps left) is the
+result I'd hope for from doing a second pass properly: fix what the model's
+misses revealed about the test itself, add harder cases specifically designed
+to catch ambiguity-handling and distraction-resistance, and see whether the
+score holds up. It did — every adversarial case passed, including the ones
+built to catch the model borrowing details from a semantically similar but
+wrong resource name, or getting pulled off course by an irrelevant narrative
+detail. The only thing left standing between this eval and a clean 100% is a
+model tendency to talk through its reasoning and self-correct after the
+line my grading script actually reads, which is a different kind of miss than
+"misapplied the policy."
 
 ## Files
 
 ```
 access-policy-eval/
 ├── policy.md                    the v2 policy being tested
-├── tests.csv                    90 test cases plus the generated answer key
+├── tests.csv                    105 test cases plus the generated answer key
 ├── prompt.txt                   what actually gets sent to the model
 ├── promptfooconfig.yaml         wires it all together and grades it
 ├── scripts/
