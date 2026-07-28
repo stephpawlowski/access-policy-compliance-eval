@@ -56,7 +56,7 @@ ever change a rule, I change it once.
 
 ## Try it yourself
 
-The [live dashboard](https://projects.stephpawlowski.com) has a "Try it
+The [live dashboard](https://access-checker.stephpawlowski.com) has a "Try it
 yourself" panel: pick a role, a department, a system, an approval count, and
 whether the account is offboarding or there's an active incident, and it'll
 tell you the decision and which rule produced it. That part runs entirely in
