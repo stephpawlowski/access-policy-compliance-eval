@@ -6,14 +6,25 @@ punt to a human instead of guessing. This is a small eval built with
 [promptfoo](https://www.promptfoo.dev/), a free, open-source tool for testing
 and scoring LLM prompts against a dataset of test cases.
 
-This is version 2 of the project. The first version had 30 test cases and 10
+This is version 3 of the project. The first version had 30 test cases and 10
 rules written in fairly abstract terms ("billing access," "production system
-access"). This version names 10 actual systems (Billing System, Production
-Database, Customer PII, and so on), triples the test set to 90 cases, and adds
-something the first version didn't have: a live simulator on the dashboard
-where you can toggle role, department, system, and a few context flags
-yourself and see what the policy says, instantly, without calling a model at
-all.
+access"). Version 2 named 10 actual systems (Billing System, Production
+Database, Customer PII, and so on), tripled the test set to 90 cases, and
+added a live simulator on the dashboard where you can toggle role,
+department, system, and a few context flags yourself and see what the policy
+says, instantly, without calling a model at all.
+
+Version 3 adds two things. First, a "Customize the policy" panel: every
+approval threshold in the policy is now a parameter, not a hardcoded number,
+so you can loosen or tighten any of them and see how many of the test cases
+would flip to a different correct answer. Second, 15 new adversarial test
+cases that don't test new rules — they test whether a model handles
+*ambiguity and distraction* the way a careful reviewer would, rather than
+just applying clean, fully-specified rules correctly. That includes fixing a
+real gap v2's own findings surfaced: Employee Records requests from a Manager
+now explicitly track whether the records belong to their own direct
+report, and if a request doesn't say, the correct answer is to escalate for
+clarification, not to guess.
 
 ## The setup
 
@@ -45,8 +56,9 @@ ever change a rule, I change it once.
   couple of hand-picked examples per rule branch (38 branches across the 10
   rules, so every path through the policy gets tested at least twice) plus a
   seeded-random fill to round it out to 90 and add realistic variety.
-- **`tests.csv`** has the 90 generated access requests, each with its expected
-  decision and a one-sentence citation of the rule that produced it.
+- **`tests.csv`** has the 105 generated access requests (90 core cases plus 15
+  adversarial ones), each with its expected decision and a one-sentence
+  citation of the rule that produced it.
 - **`prompt.txt`** is the template sent to the model: the full v2 policy, then
   the request as structured fields (role, department, system, approvals,
   offboarding status, active incident), then instructions to answer
@@ -107,6 +119,13 @@ You can filter down to just the failures there, which is honestly the more
 useful part once you're past the first run.
 
 ## What I found
+
+> **Note:** the numbers below are from the v2 run (90 scenarios). v3 adds 15
+> adversarial cases on top of that set (105 total) and hasn't been re-run
+> against the model yet — the dashboard shows those new cases as pending
+> until that happens. The analysis below is kept because the failure
+> categories it identifies are still the most interesting part of this
+> project and directly motivated v3's adversarial cases.
 
 Model tested: `claude-sonnet-5`, one provider.
 

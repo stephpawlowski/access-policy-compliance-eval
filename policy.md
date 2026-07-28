@@ -45,6 +45,9 @@ Three additional facts about a request can change the outcome:
 - **Offboarding status** — whether the requester's account is currently being offboarded or has
   already been terminated.
 - **Active incident** — whether Fernwood currently has an active, declared security incident.
+- **Direct report status** (Employee Records requests by a Manager only) — whether the records
+  being requested belong to one of the requester's own direct reports. If a request doesn't state
+  this, treat it as genuinely unknown, not as "no" — see Rule 8.
 
 ## Rules
 
@@ -83,8 +86,10 @@ Three additional facts about a request can change the outcome:
    Everyone else outside Engineering may be escalated with one prior approval; otherwise denied.
 
 8. **Employee Records.** People (HR) staff have standing access. Managers also have standing access,
-   but only for their own direct reports' records. Admins have standing access. Everyone else may be
-   escalated with one prior approval; otherwise denied.
+   but only for their own direct reports' records — if a request doesn't say whether that's the case,
+   escalate for clarification rather than assuming either way; don't let a high approval count
+   substitute for actually knowing. Admins have standing access. Everyone else may be escalated with
+   one prior approval; otherwise denied.
 
 9. **Vendor Contracts.** Finance has standing access. Within Sales, Managers and Admins have standing
    access; other Sales staff (Employees, Interns, Contractors) may be escalated pending further
