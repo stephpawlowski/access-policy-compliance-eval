@@ -46,6 +46,20 @@
 
   const FINANCE_SYSTEMS = ["Billing System", "Payroll System", "Financial Reports"];
 
+  // Every approval-count threshold in the policy, pulled out into one place so the
+  // engine can be re-graded against a *different* version of the policy without
+  // touching the rule logic itself. Defaults here match policy.md exactly.
+  const DEFAULT_CONFIG = {
+    r2ManagerApprovals: 2,   // Rule 2 (Admin Console): Manager approvals needed to escalate
+    r3IncidentApprovals: 1,  // Rule 3 (Incident Response Tools): approvals needed for auto-approve during an active incident
+    r4OutsideApprovals: 1,   // Rule 4 (Finance-restricted systems): approvals needed to escalate, outside Finance
+    r5EngineeringApprovals: 1, // Rule 5 (Customer PII): approvals needed to escalate, for Engineering
+    r6OutsideApprovals: 2,   // Rule 6 (Production Database): approvals needed to escalate, outside Engineering
+    r7OutsideApprovals: 1,   // Rule 7 (Source Code Repository): approvals needed to escalate, outside Engineering
+    r8OutsideApprovals: 1,   // Rule 8 (Employee Records): approvals needed to escalate, outside People/Manager/Admin
+    r10ApproveThreshold: 2,  // Rule 10 (catch-all): approvals needed for auto-approve
+  };
+
   function result(decision, rule, citation) {
     return { decision, rule, citation };
   }
@@ -58,8 +72,12 @@
    * @param {number} input.approvals - number of prior manager approvals obtained (0, 1, or 2+)
    * @param {boolean} input.offboarding - true if the requester is in offboarding/terminated status
    * @param {boolean} input.incidentActive - true if there is an active declared security incident
+   * @param {Object} [config] - optional overrides for the approval thresholds above (DEFAULT_CONFIG).
+   *   Pass a partial object to test a modified version of the policy; omit it to use the
+   *   policy exactly as written in policy.md.
    */
-  function evaluate(input) {
+  function evaluate(input, config) {
+    const cfg = Object.assign({}, DEFAULT_CONFIG, config || {});
     const role = input.role;
     const department = input.department;
     const resource = input.resource;
@@ -81,11 +99,11 @@
       if (role === "Admin") {
         return result("APPROVE", "R2", "Rule 2: Admins have standing access to the Admin Console.");
       }
-      if (role === "Manager" && approvals >= 2) {
+      if (role === "Manager" && approvals >= cfg.r2ManagerApprovals) {
         return result(
           "ESCALATE",
           "R2",
-          "Rule 2: Managers with two prior approvals may request Admin Console access, but it still requires final review before granting."
+          "Rule 2: Managers with " + cfg.r2ManagerApprovals + " prior approval(s) may request Admin Console access, but it still requires final review before granting."
         );
       }
       return result(
@@ -103,11 +121,11 @@
       if (role === "Admin") {
         return result("APPROVE", "R3", "Rule 3: Admins have standing access to incident response tools.");
       }
-      if (incidentActive && approvals >= 1) {
+      if (incidentActive && approvals >= cfg.r3IncidentApprovals) {
         return result(
           "APPROVE",
           "R3",
-          "Rule 3: during an active incident, non-Security staff with at least one prior approval are auto-approved for incident response tools."
+          "Rule 3: during an active incident, non-Security staff with at least " + cfg.r3IncidentApprovals + " prior approval(s) are auto-approved for incident response tools."
         );
       }
       if (incidentActive) {
@@ -140,11 +158,11 @@
           "Rule 4: Finance department staff have standing access to financial systems."
         );
       }
-      if ((role === "Manager" || role === "Admin") && approvals >= 1) {
+      if ((role === "Manager" || role === "Admin") && approvals >= cfg.r4OutsideApprovals) {
         return result(
           "ESCALATE",
           "R4",
-          "Rule 4: Managers and Admins outside Finance may request access to financial systems with one prior approval, pending further review."
+          "Rule 4: Managers and Admins outside Finance may request access to financial systems with " + cfg.r4OutsideApprovals + " prior approval(s), pending further review."
         );
       }
       return result(
@@ -162,11 +180,11 @@
       if (department === "Security") {
         return result("APPROVE", "R5", "Rule 5: Security staff have standing access to Customer PII for investigations.");
       }
-      if (department === "Engineering" && approvals >= 1) {
+      if (department === "Engineering" && approvals >= cfg.r5EngineeringApprovals) {
         return result(
           "ESCALATE",
           "R5",
-          "Rule 5: Engineering may request Customer PII access for debugging with one prior approval, pending further review."
+          "Rule 5: Engineering may request Customer PII access for debugging with " + cfg.r5EngineeringApprovals + " prior approval(s), pending further review."
         );
       }
       return result(
@@ -195,11 +213,11 @@
           "Rule 6: Engineering employees, managers, and admins have standing access to the Production Database."
         );
       }
-      if (approvals >= 2) {
+      if (approvals >= cfg.r6OutsideApprovals) {
         return result(
           "ESCALATE",
           "R6",
-          "Rule 6: staff outside Engineering may request Production Database access with two prior approvals, pending final review."
+          "Rule 6: staff outside Engineering may request Production Database access with " + cfg.r6OutsideApprovals + " prior approval(s), pending final review."
         );
       }
       return result(
@@ -225,11 +243,11 @@
           "Rule 7: Contractors outside Engineering are denied Source Code Repository access."
         );
       }
-      if (approvals >= 1) {
+      if (approvals >= cfg.r7OutsideApprovals) {
         return result(
           "ESCALATE",
           "R7",
-          "Rule 7: staff outside Engineering may request Source Code Repository access with one prior approval, pending further review."
+          "Rule 7: staff outside Engineering may request Source Code Repository access with " + cfg.r7OutsideApprovals + " prior approval(s), pending further review."
         );
       }
       return result(
@@ -254,11 +272,11 @@
       if (role === "Admin") {
         return result("APPROVE", "R8", "Rule 8: Admins have standing access to Employee Records.");
       }
-      if (approvals >= 1) {
+      if (approvals >= cfg.r8OutsideApprovals) {
         return result(
           "ESCALATE",
           "R8",
-          "Rule 8: non-managers outside People may request Employee Records access with one prior approval, pending further review."
+          "Rule 8: non-managers outside People may request Employee Records access with " + cfg.r8OutsideApprovals + " prior approval(s), pending further review."
         );
       }
       return result(
@@ -292,11 +310,11 @@
 
     // Rule 10: catch-all for anything not explicitly listed above (including "Other / Unlisted
     // System"), falling back to the number of prior approvals obtained.
-    if (approvals >= 2) {
+    if (approvals >= cfg.r10ApproveThreshold) {
       return result(
         "APPROVE",
         "R10",
-        "Rule 10: requests for systems not explicitly covered by this policy are approved once two prior approvals have been obtained."
+        "Rule 10: requests for systems not explicitly covered by this policy are approved once " + cfg.r10ApproveThreshold + " prior approval(s) have been obtained."
       );
     }
     if (approvals === 1) {
@@ -313,5 +331,5 @@
     );
   }
 
-  return { evaluate, ROLES, DEPARTMENTS, RESOURCES, FINANCE_SYSTEMS };
+  return { evaluate, ROLES, DEPARTMENTS, RESOURCES, FINANCE_SYSTEMS, DEFAULT_CONFIG };
 });
