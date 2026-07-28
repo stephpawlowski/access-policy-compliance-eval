@@ -72,6 +72,9 @@
    * @param {number} input.approvals - number of prior manager approvals obtained (0, 1, or 2+)
    * @param {boolean} input.offboarding - true if the requester is in offboarding/terminated status
    * @param {boolean} input.incidentActive - true if there is an active declared security incident
+   * @param {boolean} [input.directReport] - for Employee Records requests by a Manager: true if the
+   *   records requested belong to the requester's own direct report, false if not, or omitted/undefined
+   *   if this isn't stated. Undefined is treated as a genuine unknown, not as false.
    * @param {Object} [config] - optional overrides for the approval thresholds above (DEFAULT_CONFIG).
    *   Pass a partial object to test a modified version of the policy; omit it to use the
    *   policy exactly as written in policy.md.
@@ -84,6 +87,7 @@
     const approvals = Number(input.approvals) || 0;
     const offboarding = !!input.offboarding;
     const incidentActive = !!input.incidentActive;
+    const directReport = input.directReport; // true, false, or undefined (genuinely unstated)
 
     // Rule 1: offboarding override beats everything else.
     if (offboarding) {
@@ -262,11 +266,18 @@
       if (department === "People") {
         return result("APPROVE", "R8", "Rule 8: People (HR) staff have standing access to Employee Records.");
       }
-      if (role === "Manager") {
+      if (role === "Manager" && directReport === true) {
         return result(
           "APPROVE",
           "R8",
-          "Rule 8: Managers have standing access to Employee Records for their own direct reports."
+          "Rule 8: Managers have standing access to Employee Records for their own direct reports, and this request confirms the records belong to one."
+        );
+      }
+      if (role === "Manager" && directReport === undefined) {
+        return result(
+          "ESCALATE",
+          "R8",
+          "Rule 8: Managers have standing access to Employee Records only for their own direct reports, and this request doesn't state whether that's the case here — escalate for clarification rather than assume it."
         );
       }
       if (role === "Admin") {
