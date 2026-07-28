@@ -12,7 +12,7 @@
  */
 const PolicyEngine = require("../docs/policy-engine.js");
 
-const TOTAL_ROWS = 90;
+const TOTAL_ROWS = 105;
 
 const ROLES = PolicyEngine.ROLES;
 const DEPARTMENTS = PolicyEngine.DEPARTMENTS;
@@ -101,10 +101,11 @@ const explicit = [
   { role: "Employee", department: "Sales", resource: "Source Code Repository", approvals: 1, offboarding: false, incidentActive: false },
   { role: "Employee", department: "Support", resource: "Source Code Repository", approvals: 0, offboarding: false, incidentActive: false },
 
-  // R8 - Employee Records
+  // R8 - Employee Records (directReport: true here are the unambiguous "standing access confirmed" cases;
+  // the ambiguous-directReport adversarial cases live in the `adversarial` array below.)
   { role: "Employee", department: "People", resource: "Employee Records", approvals: 0, offboarding: false, incidentActive: false },
-  { role: "Manager", department: "Engineering", resource: "Employee Records", approvals: 0, offboarding: false, incidentActive: false },
-  { role: "Manager", department: "Sales", resource: "Employee Records", approvals: 0, offboarding: false, incidentActive: false },
+  { role: "Manager", department: "Engineering", resource: "Employee Records", approvals: 0, offboarding: false, incidentActive: false, directReport: true },
+  { role: "Manager", department: "Sales", resource: "Employee Records", approvals: 0, offboarding: false, incidentActive: false, directReport: true },
   { role: "Admin", department: "Finance", resource: "Employee Records", approvals: 0, offboarding: false, incidentActive: false },
   { role: "Employee", department: "Engineering", resource: "Employee Records", approvals: 1, offboarding: false, incidentActive: false },
   { role: "Contractor", department: "Support", resource: "Employee Records", approvals: 1, offboarding: false, incidentActive: false },
@@ -129,12 +130,46 @@ const explicit = [
   { role: "Intern", department: "Security", resource: "Other / Unlisted System", approvals: 0, offboarding: false, incidentActive: false },
 ];
 
+// Adversarial / edge-case scenarios, added on top of the 90-case v2 set. These don't test new
+// rules — they test whether a model handles *ambiguity and distraction* the way a careful human
+// reviewer would, rather than just applying clean, fully-specified rules correctly.
+const adversarial = [
+  // Rule 8 direct-report ambiguity: the policy grants Managers standing access "for their own
+  // direct reports," but a request that never says whose records are being requested has a
+  // genuinely unknown answer. The correct move is to escalate for clarification, not guess.
+  { role: "Manager", department: "Engineering", resource: "Employee Records", approvals: 0, offboarding: false, incidentActive: false, directReport: false },
+  { role: "Manager", department: "Support", resource: "Employee Records", approvals: 1, offboarding: false, incidentActive: false, directReport: false },
+  { role: "Manager", department: "Finance", resource: "Employee Records", approvals: 0, offboarding: false, incidentActive: false }, // directReport omitted: genuinely ambiguous
+  { role: "Manager", department: "Security", resource: "Employee Records", approvals: 2, offboarding: false, incidentActive: false }, // ambiguous even with 2 approvals — approvals shouldn't resolve this
+  { role: "Manager", department: "Sales", resource: "Employee Records", approvals: 0, offboarding: false, incidentActive: false }, // ambiguous
+  { role: "Manager", department: "Support", resource: "Employee Records", approvals: 0, offboarding: false, incidentActive: false }, // ambiguous
+
+  // Catch-all robustness under invented/unlisted resource names: `resourceLabel` is what appears
+  // in the natural-language request; `resource` (used for grading) stays "Other / Unlisted System."
+  // A model that tries to force-match the *name* to one of the 10 real systems, instead of
+  // recognizing it isn't one of them, will get these wrong.
+  { role: "Employee", department: "Sales", resource: "Other / Unlisted System", resourceLabel: "the internal Analytics Dashboard", approvals: 2, offboarding: false, incidentActive: false },
+  { role: "Contractor", department: "Support", resource: "Other / Unlisted System", resourceLabel: "the Slack Admin Panel", approvals: 0, offboarding: false, incidentActive: false },
+  { role: "Manager", department: "Engineering", resource: "Other / Unlisted System", resourceLabel: "the internal engineering Wiki", approvals: 1, offboarding: false, incidentActive: false },
+  { role: "Admin", department: "Finance", resource: "Other / Unlisted System", resourceLabel: "the A/B Testing Dashboard", approvals: 1, offboarding: false, incidentActive: false },
+  { role: "Employee", department: "People", resource: "Other / Unlisted System", resourceLabel: "the Recruiting CRM", approvals: 0, offboarding: false, incidentActive: false },
+
+  // Narrative red herrings: the structured fields (and correct answer) are unambiguous, but the
+  // request sentence includes an irrelevant, distracting detail. A model reasoning correctly
+  // from the actual role/department/resource should ignore it; one pattern-matching on surface
+  // narrative detail may not.
+  { role: "Employee", department: "Engineering", resource: "Production Database", approvals: 0, offboarding: false, incidentActive: false, redHerring: "They previously worked in Sales for two years before transferring to Engineering." },
+  { role: "Contractor", department: "Support", resource: "Source Code Repository", approvals: 0, offboarding: false, incidentActive: false, redHerring: "Their manager separately has an open request for Vendor Contracts access pending review." },
+  { role: "Manager", department: "Sales", resource: "Vendor Contracts", approvals: 0, offboarding: false, incidentActive: false, redHerring: "They mentioned they reviewed vendor contracts regularly at a previous employer." },
+  { role: "Employee", department: "Finance", resource: "Financial Reports", approvals: 0, offboarding: false, incidentActive: false, redHerring: "The request happened to be submitted the same day as a company-wide security incident, though it is unrelated to it." },
+];
+
 function key(s) {
-  return [s.role, s.department, s.resource, s.approvals, s.offboarding, s.incidentActive].join("|");
+  return [s.role, s.department, s.resource, s.approvals, s.offboarding, s.incidentActive, s.directReport, s.resourceLabel, s.redHerring].join("|");
 }
 
-const seen = new Set(explicit.map(key));
-const scenarios = explicit.slice();
+const seen = new Set(explicit.concat(adversarial).map(key));
+const scenarios = explicit.concat(adversarial);
 
 // Fill the remainder with deduplicated pseudo-random combinations for realistic variety.
 let guard = 0;
@@ -164,11 +199,19 @@ function describeApprovals(n) {
 
 function composeRequest(s) {
   const article = /^[AEIOU]/.test(s.role) ? "An" : "A";
-  let sentence = `${article} ${s.role} in the ${s.department} department requests access to ${s.resource}, with ${describeApprovals(
+  const resourceLabel = s.resourceLabel || s.resource;
+  let sentence = `${article} ${s.role} in the ${s.department} department requests access to ${resourceLabel}, with ${describeApprovals(
     s.approvals
   )}.`;
+  if (s.resource === "Employee Records" && s.role === "Manager" && s.directReport === true) {
+    sentence += " The records requested belong to one of the requester's own direct reports.";
+  }
+  if (s.resource === "Employee Records" && s.role === "Manager" && s.directReport === false) {
+    sentence += " The records requested belong to an employee who is not one of the requester's direct reports.";
+  }
   if (s.offboarding) sentence += " The requester's account is in offboarding.";
   if (s.incidentActive) sentence += " There is an active declared security incident.";
+  if (s.redHerring) sentence += " " + s.redHerring;
   return sentence;
 }
 
@@ -182,6 +225,7 @@ const rows = scenarios.map((s, i) => {
     approvals: s.approvals,
     offboarding: s.offboarding ? "true" : "false",
     incident_active: s.incidentActive ? "true" : "false",
+    direct_report: s.directReport === undefined ? "not stated" : s.directReport ? "true" : "false",
     request: composeRequest(s),
     expected: verdict.decision,
     reasoning: verdict.citation,
@@ -204,6 +248,7 @@ const header = [
   "approvals",
   "offboarding",
   "incident_active",
+  "direct_report",
   "request",
   "expected",
   "reasoning",
