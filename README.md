@@ -6,89 +6,166 @@ punt to a human instead of guessing. This is a small eval built with
 [promptfoo](https://www.promptfoo.dev/), a free, open-source tool for testing
 and scoring LLM prompts against a dataset of test cases.
 
-This is version 3 of the project. The first version had 30 test cases and 10
-rules written in fairly abstract terms ("billing access," "production system
-access"). Version 2 named 10 actual systems (Billing System, Production
-Database, Customer PII, and so on), tripled the test set to 90 cases, and
-added a live simulator on the dashboard where you can toggle role,
-department, system, and a few context flags yourself and see what the policy
-says, instantly, without calling a model at all.
+This is version 4 of the project. See "What I found" below for the real
+results against `claude-sonnet-5` on all 161 cases across the three
+companies.
 
-Version 3 adds two things. First, a "Customize the policy" panel: every
-approval threshold in the policy is now a parameter, not a hardcoded number,
-so you can loosen or tighten any of them and see how many of the test cases
-would flip to a different correct answer. Second, 15 new adversarial test
-cases that don't test new rules — they test whether a model handles
-*ambiguity and distraction* the way a careful reviewer would, rather than
-just applying clean, fully-specified rules correctly. That includes fixing a
-real gap v2's own findings surfaced: Employee Records requests from a Manager
-now explicitly track whether the records belong to their own direct
-report, and if a request doesn't say, the correct answer is to escalate for
-clarification, not to guess.
+## What changed in v4
 
-## The setup
+The first three versions of this project all tested a single fictional
+company, Fernwood Systems, against a single pass/fail grade: did the model's
+first-line decision (APPROVE/DENY/ESCALATE) match the answer key. That's a
+real test, but it leaves two harder questions unasked. Can a model juggle
+*several* candidate policies at once without letting one bleed into another?
+And when it gets the final decision right, is that because it actually
+reasoned through the correct rule, or did it land on the right answer for
+the wrong reason?
 
-IAM and governance work comes down to applying rules consistently: approve,
-deny, or escalate a request based on someone's role, department, and the
-specifics of the situation. So I wrote a policy, wrote a batch of test
-requests, and checked whether the model's decisions matched what I'd decided
-myself ahead of time, including on the requests where the "right" answer is
-"escalate to a human," not a confident guess either way.
+v4 answers both by doing two things at once:
 
-The bigger change in v2 is that the policy logic itself now lives in one
-place, a small JavaScript rules engine, and everything else is generated from
-it. The 90 test cases and their answer key come from running that engine, and
-the dashboard's live simulator calls the exact same code. That means the
-simulator and the eval's answer key can't drift apart from each other. If I
-ever change a rule, I change it once.
+1. **Three companies instead of one.** Fernwood Systems is joined by Meridian
+   Health (a fictional hospital system) and Vertex Capital (a fictional
+   trading firm), each with its own roles, departments, systems, and rules.
+   Every request in the test set names which company it's for, and the
+   model is given all three policies in context, on purpose, so getting the
+   right answer requires actually picking the right policy, not just having
+   memorized the only one available.
+2. **Three graded dimensions instead of one.** Every response is now scored
+   on `policy_correct` (did the model apply the right company's policy at
+   all), `rule_correct` (did it cite the exact right rule number within that
+   policy), and `decision_correct` (did it reach the right final answer).
+   These are genuinely different failures: a model can reach the correct
+   decision while citing the wrong rule, or cite a rule from the wrong
+   company's policy entirely while still landing on a plausible-sounding
+   answer. Collapsing all of that into a single pass/fail, like v1 through
+   v3 did, hides which of those is actually happening.
+
+To make `policy_correct` and `rule_correct` gradable, every rule in every
+policy now has a company-prefixed tag, Fernwood's rules are F1 through F10,
+Meridian's are M1 through M8, Vertex's are V1 through V8, and the prompt
+requires the model to cite that exact tag in its justification.
+
+## The three companies
+
+- **Fernwood Systems** (general corporate IAM, carried forward from v1
+  through v3 essentially unchanged): 5 roles, 6 departments, 10 named
+  systems, 10 rules. This is the baseline the other two are built to
+  contrast with.
+- **Meridian Health** (fictional hospital system, HIPAA-flavored): 5
+  clinical/administrative roles, 5 departments, 6 named systems, 8 rules.
+  The interesting wrinkle here is a break-glass clause on Patient Records:
+  during an active declared clinical emergency, a Clinician can get
+  emergency access outside their normal assignment with a lower approval
+  bar than usual, mirroring how Fernwood's Rule 3 loosens Incident Response
+  Tools access during an active security incident, but applied to a
+  completely different kind of emergency and a completely different system.
+- **Vertex Capital** (fictional asset-management/trading firm,
+  segregation-of-duties flavored): 5 roles, 5 departments, 6 named systems,
+  8 rules. This one leans hardest into rules that exist specifically to
+  keep a role *out* of a system, no matter how many approvals pile up: the
+  Compliance Officer is denied Trading System access outright, always,
+  because compliance staff should never be able to place trades, and
+  Traders are denied Model Risk Repository access outright, always, because
+  a trader shouldn't have direct access to the risk models that govern
+  their own limits. Fernwood and Meridian don't have any role that's
+  unconditionally denied a system regardless of context besides the
+  offboarding override; Vertex has two.
+
+One pattern shows up across all three policies without me planning it that
+way going in: every company's audit/logging system has no escalate path at
+all. Fernwood doesn't have a dedicated one, but Meridian's Audit Logs and
+Vertex's Audit Trail both work this way. Every other resource in every policy
+gives a borderline case somewhere to escalate to a human. The audit system
+never does. Once you're not on the short list of roles with standing access,
+the answer is just no, regardless of how many approvals you've collected.
+That felt like the right way to model it: the one thing regulators actually
+check is the one place none of these companies wanted to leave room for a
+judgment call.
+
+The catch-alls (the rule that applies when a resource isn't explicitly
+listed) differ across the three companies too, deliberately. Fernwood's and
+Vertex's catch-alls both have an auto-approve path at two or more prior
+approvals. Meridian's doesn't, one or more approvals only ever gets you
+escalated, never approved outright. Healthcare access policy erring more
+conservative by default felt like the realistic choice.
 
 ## What's in this repo
 
-- **`policy.md`** is the fictional but realistic IAM policy: 5 roles, 6
-  departments, 10 named systems, and 10 rules covering standing access,
-  approval thresholds, offboarding, and a catch-all for anything not
-  explicitly listed.
-- **`docs/policy-engine.js`** is the rules engine itself, the actual source of
-  truth for the policy logic. It's plain JavaScript with no dependencies, so
-  it runs the same way in Node (to generate test cases) and in the browser
-  (to power the dashboard's simulator).
-- **`scripts/generate-scenarios.js`** builds `tests.csv` from the engine: a
-  couple of hand-picked examples per rule branch (38 branches across the 10
-  rules, so every path through the policy gets tested at least twice) plus a
-  seeded-random fill to round it out to 90 and add realistic variety.
-- **`tests.csv`** has the 105 generated access requests (90 core cases plus 15
-  adversarial ones), each with its expected decision and a one-sentence
-  citation of the rule that produced it.
-- **`prompt.txt`** is the template sent to the model: the full v2 policy, then
-  the request as structured fields (role, department, system, approvals,
-  offboarding status, active incident), then instructions to answer
-  APPROVE/DENY/ESCALATE on the first line and cite the rule.
-- **`promptfooconfig.yaml`** ties the prompt and the test cases together and
-  grades each response against the `expected` column in tests.csv.
+```
+access-policy-compliance-eval-v4/
+├── policies/
+│   ├── fernwood.md         Fernwood Systems policy (10 rules, tags F1-F10)
+│   ├── meridian.md         Meridian Health policy (8 rules, tags M1-M8)
+│   └── vertex.md           Vertex Capital policy (8 rules, tags V1-V8)
+├── docs/
+│   ├── policy-engine.js    the actual policy logic for all three companies,
+│   │                       shared by the generator and the simulator
+│   └── index.html          the dashboard: results table + live simulator
+├── scripts/
+│   └── generate-scenarios.js   builds tests.csv from policy-engine.js
+├── tests.csv               161 test cases plus the generated answer key
+├── prompt.txt               what actually gets sent to the model
+├── promptfooconfig.yaml     wires it all together and grades three
+│                             separate dimensions per response
+├── package.json
+└── README.md
+```
+
+**`docs/policy-engine.js`** is still the single source of truth for the
+policy logic, now for all three companies instead of one. It exports
+`evaluate(company, input, config)` plus per-company `ROLES`, `DEPARTMENTS`,
+`RESOURCES`, and `DEFAULT_CONFIG`, where `company` is `'fernwood'`,
+`'meridian'`, or `'vertex'`. Both the test generator and the dashboard's live
+simulator call this exact code, so the simulator and the eval's answer key
+can never drift apart from each other, for any of the three companies.
+
+**`scripts/generate-scenarios.js`** builds `tests.csv`: hand-picked scenarios
+per company covering every rule-and-decision combination at least twice,
+adversarial cases per company testing ambiguity and distraction, a new
+cross-company adversarial set (8 rows) specifically testing whether the
+model conflates similarly-named systems that belong to different companies,
+Meridian's Billing/Claims System versus Fernwood's Billing System, Meridian's
+Audit Logs versus Vertex's Audit Trail, and so on, and a coverage summary
+printed to stderr so gaps are visible rather than assumed away. 161 rows
+total: 64 Fernwood, 50 Meridian, 47 Vertex.
+
+**`prompt.txt`** gives the model all three full policies in clearly labeled
+sections, then the request as structured fields including which company it's
+for, then instructions to answer APPROVE/DENY/ESCALATE on the first line and
+cite the specific company-prefixed rule tag on the second.
+
+**`promptfooconfig.yaml`** grades each response on three named metrics:
+`policy_correct` (does the cited rule tag's company-letter prefix match the
+expected company), `rule_correct` (does the output cite the exact expected
+rule tag, checked as a whole token so "M2" doesn't false-positive match
+inside "M20"), and `decision_correct` (does the first line match the
+expected decision). A response that doesn't cite any rule tag at all fails
+`policy_correct` outright, that's a real miss, not a free pass.
 
 ## Try it yourself
 
-The [live dashboard](https://access-checker.stephpawlowski.com) has a "Try it
-yourself" panel: pick a role, a department, a system, an approval count, and
-whether the account is offboarding or there's an active incident, and it'll
-tell you the decision and which rule produced it. That part runs entirely in
-your browser off `policy-engine.js`, no API key or server involved. It's the
-fastest way to get a feel for how the policy actually behaves before reading
-the 105 test cases one by one.
+Open `docs/index.html` in a browser. The "Try it yourself" panel lets you
+pick a company, which changes the role/department/system/context-flag
+options to match that company's policy, then computes the decision instantly
+in your browser off `policy-engine.js`, no API key or server involved.
 
-There's also an "Ask the real model" button next to the simulator that sends
-your exact inputs to `claude-sonnet-5` and shows whether its answer matches
-the rules engine. That call goes through a small Cloudflare Worker I wrote
-that holds the Anthropic API key server-side, so it's never exposed in the
-browser, and rate-limits requests per visitor. It's a real live model call,
-not a canned response.
+The results table below it is populated with the real run described below:
+all 161 cases, each with three separate pass/fail badges (Policy, Rule,
+Decision) and a filter to show only the failures on a given dimension.
+
+The v3 dashboard also had an "Ask the real model" button that called a small
+Cloudflare Worker holding the Anthropic API key server-side. That worker was
+written for the single-company v3 prompt and doesn't understand the v4
+multi-company prompt or the three-dimension grading, so it isn't wired up in
+this pass, there's a comment in `docs/index.html` marking it as a follow-up
+rather than shipping it silently broken.
 
 ## Setup
 
 You'll need [Node.js](https://nodejs.org/) 18 or later.
 
 ```bash
-cd access-policy-eval
+cd access-policy-compliance-eval-v4
 npm install
 ```
 
@@ -101,8 +178,8 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 Want to test a different model instead? Edit the `providers:` list in
 `promptfooconfig.yaml` and set the matching API key.
 
-If you want to regenerate `tests.csv` yourself, or change a rule and see how
-the answer key updates:
+If you want to regenerate `tests.csv` yourself, or change a rule in any of
+the three companies' engines and see how the answer key updates:
 
 ```bash
 node scripts/generate-scenarios.js > tests.csv
@@ -114,108 +191,93 @@ node scripts/generate-scenarios.js > tests.csv
 npm run eval -- -o results.json
 ```
 
-That runs all 105 cases, prints a pass/fail summary with overall accuracy, and
-saves the full results to `results.json`. For a browsable view of each
-individual result:
+That runs all 161 cases across all three companies, grades each response on
+all three dimensions, and saves the full results to `results.json`. For a
+browsable view of each individual result, including a per-metric breakdown:
 
 ```bash
 npm run view
 ```
 
-You can filter down to just the failures there, which is honestly the more
-useful part once you're past the first run.
-
 ## What I found
 
-Model tested: `claude-sonnet-5`, one provider. This is the v3 run: all 105
-scenarios, including the 15 new adversarial cases.
+Model tested: `claude-sonnet-5`, one provider, all 161 cases across the three
+companies.
 
-**104 out of 105 correct (99.05%)** — every one of the 15 adversarial cases
-passed, including the direct-report ambiguity checks that v3 added
-specifically because v2's own findings had surfaced a real gap in how the
-Employee Records rule was being tested (see below). By expected decision:
-38/39 on deny, 34/34 on approve, 32/32 on escalate.
+**Policy correct: 161/161 (100%). Rule correct: 161/161 (100%). Decision
+correct: 160/161 (99.4%).**
 
-Both issues that showed up in the v2 run are gone in this one, and for the
-reasons I expected: the rule-threshold miss (a Manager with one approval
-requesting Admin Console access) is now answered correctly, and the two
-answer-key gaps around "Manager access to Employee Records" are resolved
-now that the scenario generator explicitly states whether the records belong
-to the manager's own direct report. Fixing the test generator fixed the
-model's score, not the other way around — which is itself worth noting: some
-of what looks like "the model got it wrong" in an eval is actually "the eval
-didn't specify enough for a careful reader to get it right."
+The two dimensions I built this version specifically to test came back
+clean. The model never once cited a rule from the wrong company's policy,
+not on the general adversarial cases, and not on the eight cross-company
+naming-confusion rows built specifically to tempt that mistake (a Meridian
+Billing/Claims System request reasoned about with Fernwood's Billing System
+rule, a Vertex Audit Trail request answered with Meridian's Audit Logs rule,
+and so on). It also never cited the wrong rule number within the correct
+policy. Going in, I expected stuffing three full policies into one prompt to
+produce at least a handful of cross-contamination errors. It didn't. That's
+a genuinely useful negative result: the concern the whole multi-company
+redesign was built around turned out not to be where this model struggles.
 
-### The one remaining miss is a formatting quirk, not a policy error
+By company: Fernwood 63/64 decision-correct (98.4%), Meridian 50/50 (100%),
+Vertex 47/47 (100%). Every miss on any dimension, all one of them, was on
+Fernwood.
 
-Row 59: an Intern in Engineering requesting Employee Records with zero
-prior approvals. Expected: DENY. The model's raw output:
+### The one remaining miss, again, is a formatting habit
+
+Row 19: an Employee in Engineering (not Finance) requesting the Payroll
+System with zero prior approvals. Expected: DENY, rule F4. The model's raw
+output:
 
 > ESCALATE
+> Rule F4 applies because the requester is an Employee outside Finance
+> requesting a Finance-restricted system, and only Managers/Admins with
+> prior approvals qualify for escalation, however, since the requester is
+> an Employee (not Manager/Admin), F4's "everyone else outside Finance is
+> denied" applies...
 >
-> Rule 8: Employee Records — Intern is not HR, Manager, or Admin, and has 0
-> prior approvals, so per the "everyone else" clause with zero approvals
-> this would normally be a Deny; however, since the requester is not a
-> Manager, the "own direct reports" ambiguity does not apply, and with 0
-> prior approvals the correct outcome under Rule 8 is Deny.
->
-> **Correction:**
+> Wait, let me reconsider: F4 states Managers and Admins with approvals are
+> escalated; everyone else outside Finance is denied.
 >
 > DENY
-> Rule 8 applies: Employee Records access outside HR/Manager/Admin requires
-> at least one prior approval to escalate, and since this Intern has zero
-> prior approvals, the request is denied.
+> Rule F4 applies because the requester is an Engineering Employee (not
+> Finance, not a Manager or Admin) requesting a Finance-restricted system,
+> and F4 denies all non-Finance staff who aren't Managers/Admins with prior
+> approvals, regardless of approval count.
 
-The model talks itself into the wrong answer, catches the mistake mid-stream,
-and corrects to the right one. But my grading script only reads the first
-line — as instructed by the prompt — so this scores as a fail even though the
-final, considered answer is correct. This is the exact same failure mode I
-saw three times in the v2 run (ids 35, 73, and 79 back then), just down to
-one instance now that the answer-key gaps are fixed. If I graded on the last
-decision line instead of the first, this eval would be 105/105 (100%), not
-99.05%. I'm keeping first-line grading, since that's what the prompt actually
-instructs and changing the grading criteria after seeing the results would be
-moving the goalposts — but it's worth flagging that the one point separating
-"perfect" from "99%" here is a formatting habit, not a misapplied rule.
+This is the exact same failure shape as the one miss in v3 (an Intern
+requesting Employee Records, back then): the model second-guesses itself
+mid-answer, and the corrected, final answer is right. My grading script
+reads the first line, per what the prompt instructs, so this scores as a
+fail on `decision_correct` even though `rule_correct` and `policy_correct`
+both pass, since the eventual rule citation and reasoning are correct
+throughout. Multi-dimensional grading actually makes this easier to see
+clearly than v3's single pass/fail did: this row isn't a policy mix-up or a
+wrong rule, it's specifically and only a first-line formatting habit,
+because the other two metrics say so directly instead of me having to infer
+it from reading the transcript.
 
 ### Take away
 
-Going from 93.3% (v2, 90 cases, several real answer-key gaps) to 99.05% (v3,
-105 cases including 15 adversarial ones, no answer-key gaps left) is the
-result I'd hope for from doing a second pass properly: fix what the model's
-misses revealed about the test itself, add harder cases specifically designed
-to catch ambiguity-handling and distraction-resistance, and see whether the
-score holds up. It did — every adversarial case passed, including the ones
-built to catch the model borrowing details from a semantically similar but
-wrong resource name, or getting pulled off course by an irrelevant narrative
-detail. The only thing left standing between this eval and a clean 100% is a
-model tendency to talk through its reasoning and self-correct after the
-line my grading script actually reads, which is a different kind of miss than
-"misapplied the policy."
-
-## Files
-
-```
-access-policy-eval/
-├── policy.md                    the v2 policy being tested
-├── tests.csv                    105 test cases plus the generated answer key
-├── prompt.txt                   what actually gets sent to the model
-├── promptfooconfig.yaml         wires it all together and grades it
-├── scripts/
-│   └── generate-scenarios.js    builds tests.csv from policy-engine.js
-├── docs/
-│   ├── policy-engine.js         the actual policy logic, shared by the generator and the simulator
-│   └── index.html               the dashboard: results table + live simulator
-├── package.json
-└── README.md
-```
+The headline result isn't the 99.4%, it's that the two failure modes I
+built this version to go looking for (blending two companies' rules
+together, and citing a real but wrong rule number) didn't show up at all,
+against a fairly deliberate adversarial set designed to provoke exactly
+that. The one thing that did go wrong is the same thing that went wrong in
+v3: a model that talks through its reasoning out loud and self-corrects
+past the point my grader is instructed to stop reading.
 
 ## Why I built this
 
 I wanted real, hands-on reps at LLM evaluation: writing test cases, deciding
 what "correct" means ahead of time, and measuring a model against that. This
-was the domain I know best, so I used it as the test bed. Expanding it to v2
-was also a chance to fix a structural problem with the first version: the
-answer key was something only I could reason about by hand. Now it's
-generated code, which means it's checkable, reproducible, and reusable for
-the interactive simulator instead of a one-time spreadsheet.
+was the domain I know best, so I used it as the test bed. v1 through v3
+answered "can a model apply one written policy correctly," including knowing
+when to escalate instead of guessing (v3 landed at 99.05%, 104 of 105, with
+the one miss being a grading-format artifact rather than a misapplied rule).
+v4 is a deliberately harder question: can a model keep several written
+policies straight at once, and when it gets the right answer, is that for
+the right reason. Splitting the old single pass/fail into three separate
+dimensions was the only way I could think of to actually find out, rather
+than just assuming a correct final decision meant correct reasoning
+underneath it.

@@ -1,106 +1,501 @@
-id,role,department,resource,approvals,offboarding,incident_active,direct_report,request,expected,reasoning
-1,Admin,Engineering,Production Database,2,true,false,not stated,"An Admin in the Engineering department requests access to Production Database, with two prior manager approvals. The requester's account is in offboarding.",DENY,"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."
-2,Manager,Finance,Billing System,0,true,false,not stated,"A Manager in the Finance department requests access to Billing System, with no prior manager approvals. The requester's account is in offboarding.",DENY,"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."
-3,Employee,Security,Incident Response Tools,0,true,true,not stated,"An Employee in the Security department requests access to Incident Response Tools, with no prior manager approvals. The requester's account is in offboarding. There is an active declared security incident.",DENY,"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."
-4,Contractor,Support,Customer PII,0,true,false,not stated,"A Contractor in the Support department requests access to Customer PII, with no prior manager approvals. The requester's account is in offboarding.",DENY,"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."
-5,Admin,Engineering,Admin Console,0,false,false,not stated,"An Admin in the Engineering department requests access to Admin Console, with no prior manager approvals.",APPROVE,Rule 2: Admins have standing access to the Admin Console.
-6,Admin,Finance,Admin Console,0,false,false,not stated,"An Admin in the Finance department requests access to Admin Console, with no prior manager approvals.",APPROVE,Rule 2: Admins have standing access to the Admin Console.
-7,Manager,Engineering,Admin Console,2,false,false,not stated,"A Manager in the Engineering department requests access to Admin Console, with two prior manager approvals.",ESCALATE,"Rule 2: Managers with 2 prior approval(s) may request Admin Console access, but it still requires final review before granting."
-8,Manager,Sales,Admin Console,2,false,false,not stated,"A Manager in the Sales department requests access to Admin Console, with two prior manager approvals.",ESCALATE,"Rule 2: Managers with 2 prior approval(s) may request Admin Console access, but it still requires final review before granting."
-9,Manager,Engineering,Admin Console,1,false,false,not stated,"A Manager in the Engineering department requests access to Admin Console, with one prior manager approval.",DENY,"Rule 2: Admin Console access is restricted to the Admin role, or to Managers with two prior approvals under review."
-10,Employee,Engineering,Admin Console,0,false,false,not stated,"An Employee in the Engineering department requests access to Admin Console, with no prior manager approvals.",DENY,"Rule 2: Admin Console access is restricted to the Admin role, or to Managers with two prior approvals under review."
-11,Intern,Finance,Admin Console,0,false,false,not stated,"An Intern in the Finance department requests access to Admin Console, with no prior manager approvals.",DENY,"Rule 2: Admin Console access is restricted to the Admin role, or to Managers with two prior approvals under review."
-12,Employee,Security,Incident Response Tools,0,false,false,not stated,"An Employee in the Security department requests access to Incident Response Tools, with no prior manager approvals.",APPROVE,Rule 3: Security team members have standing access to incident response tools.
-13,Intern,Security,Incident Response Tools,0,false,false,not stated,"An Intern in the Security department requests access to Incident Response Tools, with no prior manager approvals.",APPROVE,Rule 3: Security team members have standing access to incident response tools.
-14,Admin,Sales,Incident Response Tools,0,false,false,not stated,"An Admin in the Sales department requests access to Incident Response Tools, with no prior manager approvals.",APPROVE,Rule 3: Admins have standing access to incident response tools.
-15,Admin,Finance,Incident Response Tools,0,false,false,not stated,"An Admin in the Finance department requests access to Incident Response Tools, with no prior manager approvals.",APPROVE,Rule 3: Admins have standing access to incident response tools.
-16,Employee,Engineering,Incident Response Tools,1,false,true,not stated,"An Employee in the Engineering department requests access to Incident Response Tools, with one prior manager approval. There is an active declared security incident.",APPROVE,"Rule 3: during an active incident, non-Security staff with at least 1 prior approval(s) are auto-approved for incident response tools."
-17,Manager,Support,Incident Response Tools,2,false,true,not stated,"A Manager in the Support department requests access to Incident Response Tools, with two prior manager approvals. There is an active declared security incident.",APPROVE,"Rule 3: during an active incident, non-Security staff with at least 1 prior approval(s) are auto-approved for incident response tools."
-18,Employee,Engineering,Incident Response Tools,0,false,true,not stated,"An Employee in the Engineering department requests access to Incident Response Tools, with no prior manager approvals. There is an active declared security incident.",ESCALATE,"Rule 3: during an active incident, non-Security staff without a prior approval are escalated for expedited review."
-19,Contractor,Sales,Incident Response Tools,0,false,true,not stated,"A Contractor in the Sales department requests access to Incident Response Tools, with no prior manager approvals. There is an active declared security incident.",ESCALATE,"Rule 3: during an active incident, non-Security staff without a prior approval are escalated for expedited review."
-20,Employee,Engineering,Incident Response Tools,0,false,false,not stated,"An Employee in the Engineering department requests access to Incident Response Tools, with no prior manager approvals.",DENY,"Rule 3: outside an active incident, incident response tools are limited to the Security team and Admins."
-21,Manager,Sales,Incident Response Tools,1,false,false,not stated,"A Manager in the Sales department requests access to Incident Response Tools, with one prior manager approval.",DENY,"Rule 3: outside an active incident, incident response tools are limited to the Security team and Admins."
-22,Intern,Finance,Payroll System,0,false,false,not stated,"An Intern in the Finance department requests access to Payroll System, with no prior manager approvals.",ESCALATE,"Rule 4: Finance interns need sign-off before accessing financial systems, even within their own department."
-23,Intern,Finance,Billing System,0,false,false,not stated,"An Intern in the Finance department requests access to Billing System, with no prior manager approvals.",ESCALATE,"Rule 4: Finance interns need sign-off before accessing financial systems, even within their own department."
-24,Employee,Finance,Financial Reports,0,false,false,not stated,"An Employee in the Finance department requests access to Financial Reports, with no prior manager approvals.",APPROVE,Rule 4: Finance department staff have standing access to financial systems.
-25,Contractor,Finance,Billing System,0,false,false,not stated,"A Contractor in the Finance department requests access to Billing System, with no prior manager approvals.",APPROVE,Rule 4: Finance department staff have standing access to financial systems.
-26,Manager,Sales,Financial Reports,1,false,false,not stated,"A Manager in the Sales department requests access to Financial Reports, with one prior manager approval.",ESCALATE,"Rule 4: Managers and Admins outside Finance may request access to financial systems with 1 prior approval(s), pending further review."
-27,Admin,Support,Payroll System,1,false,false,not stated,"An Admin in the Support department requests access to Payroll System, with one prior manager approval.",ESCALATE,"Rule 4: Managers and Admins outside Finance may request access to financial systems with 1 prior approval(s), pending further review."
-28,Employee,Sales,Billing System,0,false,false,not stated,"An Employee in the Sales department requests access to Billing System, with no prior manager approvals.",DENY,Rule 4: financial systems are restricted to the Finance department outside of an approved exception.
-29,Manager,Engineering,Financial Reports,0,false,false,not stated,"A Manager in the Engineering department requests access to Financial Reports, with no prior manager approvals.",DENY,Rule 4: financial systems are restricted to the Finance department outside of an approved exception.
-30,Employee,Support,Customer PII,0,false,false,not stated,"An Employee in the Support department requests access to Customer PII, with no prior manager approvals.",APPROVE,Rule 5: Support staff have standing access to Customer PII to resolve tickets.
-31,Intern,Support,Customer PII,0,false,false,not stated,"An Intern in the Support department requests access to Customer PII, with no prior manager approvals.",APPROVE,Rule 5: Support staff have standing access to Customer PII to resolve tickets.
-32,Employee,Security,Customer PII,0,false,false,not stated,"An Employee in the Security department requests access to Customer PII, with no prior manager approvals.",APPROVE,Rule 5: Security staff have standing access to Customer PII for investigations.
-33,Employee,Engineering,Customer PII,1,false,false,not stated,"An Employee in the Engineering department requests access to Customer PII, with one prior manager approval.",ESCALATE,"Rule 5: Engineering may request Customer PII access for debugging with 1 prior approval(s), pending further review."
-34,Contractor,Engineering,Customer PII,1,false,false,not stated,"A Contractor in the Engineering department requests access to Customer PII, with one prior manager approval.",ESCALATE,"Rule 5: Engineering may request Customer PII access for debugging with 1 prior approval(s), pending further review."
-35,Employee,Engineering,Customer PII,0,false,false,not stated,"An Employee in the Engineering department requests access to Customer PII, with no prior manager approvals.",DENY,"Rule 5: Customer PII is restricted to Support and Security, or Engineering with an approval under review."
-36,Manager,Sales,Customer PII,0,false,false,not stated,"A Manager in the Sales department requests access to Customer PII, with no prior manager approvals.",DENY,"Rule 5: Customer PII is restricted to Support and Security, or Engineering with an approval under review."
-37,Intern,Engineering,Production Database,0,false,false,not stated,"An Intern in the Engineering department requests access to Production Database, with no prior manager approvals.",DENY,Rule 6: Interns are denied Production Database access regardless of department.
-38,Contractor,Engineering,Production Database,0,false,false,not stated,"A Contractor in the Engineering department requests access to Production Database, with no prior manager approvals.",ESCALATE,"Rule 6: Contractors in Engineering may request Production Database access, but it requires review before granting."
-39,Employee,Engineering,Production Database,0,false,false,not stated,"An Employee in the Engineering department requests access to Production Database, with no prior manager approvals.",APPROVE,"Rule 6: Engineering employees, managers, and admins have standing access to the Production Database."
-40,Manager,Engineering,Production Database,0,false,false,not stated,"A Manager in the Engineering department requests access to Production Database, with no prior manager approvals.",APPROVE,"Rule 6: Engineering employees, managers, and admins have standing access to the Production Database."
-41,Manager,Sales,Production Database,2,false,false,not stated,"A Manager in the Sales department requests access to Production Database, with two prior manager approvals.",ESCALATE,"Rule 6: staff outside Engineering may request Production Database access with 2 prior approval(s), pending final review."
-42,Admin,Support,Production Database,2,false,false,not stated,"An Admin in the Support department requests access to Production Database, with two prior manager approvals.",ESCALATE,"Rule 6: staff outside Engineering may request Production Database access with 2 prior approval(s), pending final review."
-43,Employee,Finance,Production Database,0,false,false,not stated,"An Employee in the Finance department requests access to Production Database, with no prior manager approvals.",DENY,Rule 6: Production Database access is restricted to Engineering outside of an approved exception.
-44,Employee,Finance,Production Database,1,false,false,not stated,"An Employee in the Finance department requests access to Production Database, with one prior manager approval.",DENY,Rule 6: Production Database access is restricted to Engineering outside of an approved exception.
-45,Employee,Engineering,Source Code Repository,0,false,false,not stated,"An Employee in the Engineering department requests access to Source Code Repository, with no prior manager approvals.",APPROVE,Rule 7: Engineering has standing access to the Source Code Repository regardless of role.
-46,Contractor,Engineering,Source Code Repository,0,false,false,not stated,"A Contractor in the Engineering department requests access to Source Code Repository, with no prior manager approvals.",APPROVE,Rule 7: Engineering has standing access to the Source Code Repository regardless of role.
-47,Intern,Engineering,Source Code Repository,0,false,false,not stated,"An Intern in the Engineering department requests access to Source Code Repository, with no prior manager approvals.",APPROVE,Rule 7: Engineering has standing access to the Source Code Repository regardless of role.
-48,Contractor,Sales,Source Code Repository,2,false,false,not stated,"A Contractor in the Sales department requests access to Source Code Repository, with two prior manager approvals.",DENY,Rule 7: Contractors outside Engineering are denied Source Code Repository access.
-49,Contractor,Support,Source Code Repository,0,false,false,not stated,"A Contractor in the Support department requests access to Source Code Repository, with no prior manager approvals.",DENY,Rule 7: Contractors outside Engineering are denied Source Code Repository access.
-50,Employee,Sales,Source Code Repository,1,false,false,not stated,"An Employee in the Sales department requests access to Source Code Repository, with one prior manager approval.",ESCALATE,"Rule 7: staff outside Engineering may request Source Code Repository access with 1 prior approval(s), pending further review."
-51,Employee,Support,Source Code Repository,0,false,false,not stated,"An Employee in the Support department requests access to Source Code Repository, with no prior manager approvals.",DENY,Rule 7: Source Code Repository access outside Engineering requires at least one prior approval.
-52,Employee,People,Employee Records,0,false,false,not stated,"An Employee in the People department requests access to Employee Records, with no prior manager approvals.",APPROVE,Rule 8: People (HR) staff have standing access to Employee Records.
-53,Manager,Engineering,Employee Records,0,false,false,true,"A Manager in the Engineering department requests access to Employee Records, with no prior manager approvals. The records requested belong to one of the requester's own direct reports.",APPROVE,"Rule 8: Managers have standing access to Employee Records for their own direct reports, and this request confirms the records belong to one."
-54,Manager,Sales,Employee Records,0,false,false,true,"A Manager in the Sales department requests access to Employee Records, with no prior manager approvals. The records requested belong to one of the requester's own direct reports.",APPROVE,"Rule 8: Managers have standing access to Employee Records for their own direct reports, and this request confirms the records belong to one."
-55,Admin,Finance,Employee Records,0,false,false,not stated,"An Admin in the Finance department requests access to Employee Records, with no prior manager approvals.",APPROVE,Rule 8: Admins have standing access to Employee Records.
-56,Employee,Engineering,Employee Records,1,false,false,not stated,"An Employee in the Engineering department requests access to Employee Records, with one prior manager approval.",ESCALATE,"Rule 8: non-managers outside People may request Employee Records access with 1 prior approval(s), pending further review."
-57,Contractor,Support,Employee Records,1,false,false,not stated,"A Contractor in the Support department requests access to Employee Records, with one prior manager approval.",ESCALATE,"Rule 8: non-managers outside People may request Employee Records access with 1 prior approval(s), pending further review."
-58,Employee,Sales,Employee Records,0,false,false,not stated,"An Employee in the Sales department requests access to Employee Records, with no prior manager approvals.",DENY,"Rule 8: Employee Records are restricted to People, Managers, and Admins outside of an approved exception."
-59,Intern,Engineering,Employee Records,0,false,false,not stated,"An Intern in the Engineering department requests access to Employee Records, with no prior manager approvals.",DENY,"Rule 8: Employee Records are restricted to People, Managers, and Admins outside of an approved exception."
-60,Employee,Finance,Vendor Contracts,0,false,false,not stated,"An Employee in the Finance department requests access to Vendor Contracts, with no prior manager approvals.",APPROVE,Rule 9: Finance has standing access to Vendor Contracts.
-61,Manager,Sales,Vendor Contracts,0,false,false,not stated,"A Manager in the Sales department requests access to Vendor Contracts, with no prior manager approvals.",APPROVE,Rule 9: Sales Managers and Admins have standing access to Vendor Contracts.
-62,Admin,Sales,Vendor Contracts,0,false,false,not stated,"An Admin in the Sales department requests access to Vendor Contracts, with no prior manager approvals.",APPROVE,Rule 9: Sales Managers and Admins have standing access to Vendor Contracts.
-63,Employee,Sales,Vendor Contracts,0,false,false,not stated,"An Employee in the Sales department requests access to Vendor Contracts, with no prior manager approvals.",ESCALATE,"Rule 9: Sales staff below Manager level may request Vendor Contracts access, pending further review."
-64,Intern,Sales,Vendor Contracts,0,false,false,not stated,"An Intern in the Sales department requests access to Vendor Contracts, with no prior manager approvals.",ESCALATE,"Rule 9: Sales staff below Manager level may request Vendor Contracts access, pending further review."
-65,Employee,Engineering,Vendor Contracts,0,false,false,not stated,"An Employee in the Engineering department requests access to Vendor Contracts, with no prior manager approvals.",DENY,Rule 9: Vendor Contracts are restricted to Finance and Sales leadership outside of an approved exception.
-66,Employee,Support,Vendor Contracts,0,false,false,not stated,"An Employee in the Support department requests access to Vendor Contracts, with no prior manager approvals.",DENY,Rule 9: Vendor Contracts are restricted to Finance and Sales leadership outside of an approved exception.
-67,Employee,Engineering,Other / Unlisted System,2,false,false,not stated,"An Employee in the Engineering department requests access to Other / Unlisted System, with two prior manager approvals.",APPROVE,Rule 10: requests for systems not explicitly covered by this policy are approved once 2 prior approval(s) have been obtained.
-68,Manager,Sales,Other / Unlisted System,2,false,false,not stated,"A Manager in the Sales department requests access to Other / Unlisted System, with two prior manager approvals.",APPROVE,Rule 10: requests for systems not explicitly covered by this policy are approved once 2 prior approval(s) have been obtained.
-69,Employee,Support,Other / Unlisted System,1,false,false,not stated,"An Employee in the Support department requests access to Other / Unlisted System, with one prior manager approval.",ESCALATE,Rule 10: requests for systems not explicitly covered by this policy are escalated for review with one prior approval.
-70,Contractor,Finance,Other / Unlisted System,1,false,false,not stated,"A Contractor in the Finance department requests access to Other / Unlisted System, with one prior manager approval.",ESCALATE,Rule 10: requests for systems not explicitly covered by this policy are escalated for review with one prior approval.
-71,Employee,People,Other / Unlisted System,0,false,false,not stated,"An Employee in the People department requests access to Other / Unlisted System, with no prior manager approvals.",DENY,Rule 10: requests for systems not explicitly covered by this policy are denied without at least one prior approval.
-72,Intern,Security,Other / Unlisted System,0,false,false,not stated,"An Intern in the Security department requests access to Other / Unlisted System, with no prior manager approvals.",DENY,Rule 10: requests for systems not explicitly covered by this policy are denied without at least one prior approval.
-73,Manager,Engineering,Employee Records,0,false,false,false,"A Manager in the Engineering department requests access to Employee Records, with no prior manager approvals. The records requested belong to an employee who is not one of the requester's direct reports.",DENY,"Rule 8: Employee Records are restricted to People, Managers, and Admins outside of an approved exception."
-74,Manager,Support,Employee Records,1,false,false,false,"A Manager in the Support department requests access to Employee Records, with one prior manager approval. The records requested belong to an employee who is not one of the requester's direct reports.",ESCALATE,"Rule 8: non-managers outside People may request Employee Records access with 1 prior approval(s), pending further review."
-75,Manager,Finance,Employee Records,0,false,false,not stated,"A Manager in the Finance department requests access to Employee Records, with no prior manager approvals.",ESCALATE,"Rule 8: Managers have standing access to Employee Records only for their own direct reports, and this request doesn't state whether that's the case here — escalate for clarification rather than assume it."
-76,Manager,Security,Employee Records,2,false,false,not stated,"A Manager in the Security department requests access to Employee Records, with two prior manager approvals.",ESCALATE,"Rule 8: Managers have standing access to Employee Records only for their own direct reports, and this request doesn't state whether that's the case here — escalate for clarification rather than assume it."
-77,Manager,Sales,Employee Records,0,false,false,not stated,"A Manager in the Sales department requests access to Employee Records, with no prior manager approvals.",ESCALATE,"Rule 8: Managers have standing access to Employee Records only for their own direct reports, and this request doesn't state whether that's the case here — escalate for clarification rather than assume it."
-78,Manager,Support,Employee Records,0,false,false,not stated,"A Manager in the Support department requests access to Employee Records, with no prior manager approvals.",ESCALATE,"Rule 8: Managers have standing access to Employee Records only for their own direct reports, and this request doesn't state whether that's the case here — escalate for clarification rather than assume it."
-79,Employee,Sales,Other / Unlisted System,2,false,false,not stated,"An Employee in the Sales department requests access to the internal Analytics Dashboard, with two prior manager approvals.",APPROVE,Rule 10: requests for systems not explicitly covered by this policy are approved once 2 prior approval(s) have been obtained.
-80,Contractor,Support,Other / Unlisted System,0,false,false,not stated,"A Contractor in the Support department requests access to the Slack Admin Panel, with no prior manager approvals.",DENY,Rule 10: requests for systems not explicitly covered by this policy are denied without at least one prior approval.
-81,Manager,Engineering,Other / Unlisted System,1,false,false,not stated,"A Manager in the Engineering department requests access to the internal engineering Wiki, with one prior manager approval.",ESCALATE,Rule 10: requests for systems not explicitly covered by this policy are escalated for review with one prior approval.
-82,Admin,Finance,Other / Unlisted System,1,false,false,not stated,"An Admin in the Finance department requests access to the A/B Testing Dashboard, with one prior manager approval.",ESCALATE,Rule 10: requests for systems not explicitly covered by this policy are escalated for review with one prior approval.
-83,Employee,People,Other / Unlisted System,0,false,false,not stated,"An Employee in the People department requests access to the Recruiting CRM, with no prior manager approvals.",DENY,Rule 10: requests for systems not explicitly covered by this policy are denied without at least one prior approval.
-84,Employee,Engineering,Production Database,0,false,false,not stated,"An Employee in the Engineering department requests access to Production Database, with no prior manager approvals. They previously worked in Sales for two years before transferring to Engineering.",APPROVE,"Rule 6: Engineering employees, managers, and admins have standing access to the Production Database."
-85,Contractor,Support,Source Code Repository,0,false,false,not stated,"A Contractor in the Support department requests access to Source Code Repository, with no prior manager approvals. Their manager separately has an open request for Vendor Contracts access pending review.",DENY,Rule 7: Contractors outside Engineering are denied Source Code Repository access.
-86,Manager,Sales,Vendor Contracts,0,false,false,not stated,"A Manager in the Sales department requests access to Vendor Contracts, with no prior manager approvals. They mentioned they reviewed vendor contracts regularly at a previous employer.",APPROVE,Rule 9: Sales Managers and Admins have standing access to Vendor Contracts.
-87,Employee,Finance,Financial Reports,0,false,false,not stated,"An Employee in the Finance department requests access to Financial Reports, with no prior manager approvals. The request happened to be submitted the same day as a company-wide security incident, though it is unrelated to it.",APPROVE,Rule 4: Finance department staff have standing access to financial systems.
-88,Manager,Sales,Production Database,0,false,true,not stated,"A Manager in the Sales department requests access to Production Database, with no prior manager approvals. There is an active declared security incident.",DENY,Rule 6: Production Database access is restricted to Engineering outside of an approved exception.
-89,Contractor,People,Other / Unlisted System,2,false,true,not stated,"A Contractor in the People department requests access to Other / Unlisted System, with two prior manager approvals. There is an active declared security incident.",APPROVE,Rule 10: requests for systems not explicitly covered by this policy are approved once 2 prior approval(s) have been obtained.
-90,Employee,Support,Vendor Contracts,0,false,true,not stated,"An Employee in the Support department requests access to Vendor Contracts, with no prior manager approvals. There is an active declared security incident.",DENY,Rule 9: Vendor Contracts are restricted to Finance and Sales leadership outside of an approved exception.
-91,Manager,People,Billing System,2,true,false,not stated,"A Manager in the People department requests access to Billing System, with two prior manager approvals. The requester's account is in offboarding.",DENY,"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."
-92,Manager,Support,Financial Reports,2,false,false,not stated,"A Manager in the Support department requests access to Financial Reports, with two prior manager approvals.",ESCALATE,"Rule 4: Managers and Admins outside Finance may request access to financial systems with 1 prior approval(s), pending further review."
-93,Admin,Support,Vendor Contracts,1,false,false,not stated,"An Admin in the Support department requests access to Vendor Contracts, with one prior manager approval.",DENY,Rule 9: Vendor Contracts are restricted to Finance and Sales leadership outside of an approved exception.
-94,Contractor,Security,Financial Reports,2,false,false,not stated,"A Contractor in the Security department requests access to Financial Reports, with two prior manager approvals.",DENY,Rule 4: financial systems are restricted to the Finance department outside of an approved exception.
-95,Manager,People,Vendor Contracts,2,false,false,not stated,"A Manager in the People department requests access to Vendor Contracts, with two prior manager approvals.",DENY,Rule 9: Vendor Contracts are restricted to Finance and Sales leadership outside of an approved exception.
-96,Employee,Sales,Production Database,2,false,false,not stated,"An Employee in the Sales department requests access to Production Database, with two prior manager approvals.",ESCALATE,"Rule 6: staff outside Engineering may request Production Database access with 2 prior approval(s), pending final review."
-97,Admin,Engineering,Payroll System,2,false,false,not stated,"An Admin in the Engineering department requests access to Payroll System, with two prior manager approvals.",ESCALATE,"Rule 4: Managers and Admins outside Finance may request access to financial systems with 1 prior approval(s), pending further review."
-98,Contractor,People,Financial Reports,2,true,false,not stated,"A Contractor in the People department requests access to Financial Reports, with two prior manager approvals. The requester's account is in offboarding.",DENY,"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."
-99,Employee,Sales,Vendor Contracts,2,false,false,not stated,"An Employee in the Sales department requests access to Vendor Contracts, with two prior manager approvals.",ESCALATE,"Rule 9: Sales staff below Manager level may request Vendor Contracts access, pending further review."
-100,Intern,Sales,Employee Records,0,true,true,not stated,"An Intern in the Sales department requests access to Employee Records, with no prior manager approvals. The requester's account is in offboarding. There is an active declared security incident.",DENY,"Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."
-101,Employee,Finance,Admin Console,1,false,false,not stated,"An Employee in the Finance department requests access to Admin Console, with one prior manager approval.",DENY,"Rule 2: Admin Console access is restricted to the Admin role, or to Managers with two prior approvals under review."
-102,Intern,People,Admin Console,2,false,false,not stated,"An Intern in the People department requests access to Admin Console, with two prior manager approvals.",DENY,"Rule 2: Admin Console access is restricted to the Admin role, or to Managers with two prior approvals under review."
-103,Manager,Finance,Admin Console,2,false,false,not stated,"A Manager in the Finance department requests access to Admin Console, with two prior manager approvals.",ESCALATE,"Rule 2: Managers with 2 prior approval(s) may request Admin Console access, but it still requires final review before granting."
-104,Manager,Support,Customer PII,0,false,false,not stated,"A Manager in the Support department requests access to Customer PII, with no prior manager approvals.",APPROVE,Rule 5: Support staff have standing access to Customer PII to resolve tickets.
-105,Admin,Engineering,Admin Console,1,false,true,not stated,"An Admin in the Engineering department requests access to Admin Console, with one prior manager approval. There is an active declared security incident.",APPROVE,Rule 2: Admins have standing access to the Admin Console.
+id,company,role,department,resource,approvals,offboarding,request_context,request,expected,expected_rule,expected_company_prefix,reasoning
+1,Fernwood Systems,Manager,Engineering,Production Database,3,true,"Prior manager approvals already obtained: 3
+Requester's account currently in offboarding: Yes
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Manager in Engineering whose account is currently being offboarded still wants Production Database access before their last day.,DENY,F1,F,"Rule F1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals."
+2,Fernwood Systems,Admin,Engineering,Admin Console,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Admin in Engineering wants their standing Admin Console access confirmed.,APPROVE,F2,F,Rule F2 applies: Admins have standing access to the Admin Console.
+3,Fernwood Systems,Admin,Finance,Admin Console,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Admin in Finance requests Admin Console access.,APPROVE,F2,F,Rule F2 applies: Admins have standing access to the Admin Console.
+4,Fernwood Systems,Manager,Sales,Admin Console,2,false,"Prior manager approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Manager in Sales with two prior approvals wants Admin Console access.,ESCALATE,F2,F,"Rule F2 applies: a Manager with two prior approvals is escalated for final review of the Admin Console, not auto-approved."
+5,Fernwood Systems,Manager,Support,Admin Console,2,false,"Prior manager approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Manager in Support with two prior approvals from senior leadership requests Admin Console access.,ESCALATE,F2,F,"Rule F2 applies: a Manager with two prior approvals is escalated for final review of the Admin Console, not auto-approved."
+6,Fernwood Systems,Employee,Engineering,Admin Console,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Employee in Engineering requests Admin Console access with no approvals yet.,DENY,F2,F,"Rule F2 applies: only Admins have standing Admin Console access, and this request has neither Admin standing nor a qualifying Manager approval count."
+7,Fernwood Systems,Manager,Engineering,Admin Console,1,false,"Prior manager approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Manager in Engineering with only one prior approval requests Admin Console access.,DENY,F2,F,"Rule F2 applies: only Admins have standing Admin Console access, and this request has neither Admin standing nor a qualifying Manager approval count."
+8,Fernwood Systems,Employee,Security,Incident Response Tools,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Employee on the Security team requests Incident Response Tools access.,APPROVE,F3,F,Rule F3 applies: Security team members have standing access to Incident Response Tools at all times.
+9,Fernwood Systems,Manager,Security,Incident Response Tools,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Manager on the Security team requests Incident Response Tools access.,APPROVE,F3,F,Rule F3 applies: Security team members have standing access to Incident Response Tools at all times.
+10,Fernwood Systems,Employee,Engineering,Incident Response Tools,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: Yes
+Records requested belong to requester's own direct report: N/A for this resource",An Employee in Engineering with zero prior approvals requests Incident Response Tools access during an active incident.,ESCALATE,F3,F,"Rule F3 applies: during an active declared incident, non-Security staff without a prior approval are escalated for expedited review."
+11,Fernwood Systems,Manager,Sales,Incident Response Tools,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: Yes
+Records requested belong to requester's own direct report: N/A for this resource",A Manager in Sales with no prior approvals requests Incident Response Tools access during an active incident.,ESCALATE,F3,F,"Rule F3 applies: during an active declared incident, non-Security staff without a prior approval are escalated for expedited review."
+12,Fernwood Systems,Employee,Engineering,Incident Response Tools,2,false,"Prior manager approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource","An Employee in Engineering with two prior approvals requests Incident Response Tools access, but there is no active incident.",DENY,F3,F,"Rule F3 applies: outside an active incident, non-Security, non-Admin staff are denied Incident Response Tools access."
+13,Fernwood Systems,Manager,Finance,Incident Response Tools,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Manager in Finance requests Incident Response Tools access with no active incident and no approvals.,DENY,F3,F,"Rule F3 applies: outside an active incident, non-Security, non-Admin staff are denied Incident Response Tools access."
+14,Fernwood Systems,Employee,Finance,Billing System,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Finance Employee requests Billing System access.,APPROVE,F4,F,Rule F4 applies: Finance department staff have standing access to Finance-restricted systems.
+15,Fernwood Systems,Manager,Finance,Payroll System,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Finance Manager requests Payroll System access.,APPROVE,F4,F,Rule F4 applies: Finance department staff have standing access to Finance-restricted systems.
+16,Fernwood Systems,Intern,Finance,Financial Reports,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Finance Intern requests access to Financial Reports.,ESCALATE,F4,F,"Rule F4 applies: Finance interns need sign-off even within their own department, so this is escalated rather than auto-approved."
+17,Fernwood Systems,Intern,Finance,Billing System,2,false,"Prior manager approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Finance Intern with two prior approvals requests Billing System access.,ESCALATE,F4,F,"Rule F4 applies: Finance interns need sign-off even within their own department, so this is escalated rather than auto-approved."
+18,Fernwood Systems,Employee,Sales,Billing System,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Sales Employee with no approvals requests Billing System access.,DENY,F4,F,"Rule F4 applies: outside Finance, without a qualifying Manager/Admin approval, access to Finance-restricted systems is denied."
+19,Fernwood Systems,Employee,Engineering,Payroll System,3,false,"Prior manager approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource","An Engineering Employee with three prior approvals requests Payroll System access, hoping seniority-adjacent approval count is enough.",DENY,F4,F,"Rule F4 applies: outside Finance, without a qualifying Manager/Admin approval, access to Finance-restricted systems is denied."
+20,Fernwood Systems,Employee,Support,Customer PII,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Support Employee requests Customer PII access to resolve a ticket.,APPROVE,F5,F,Rule F5 applies: Support has standing access to Customer PII for handling tickets.
+21,Fernwood Systems,Employee,Security,Customer PII,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Security Employee requests Customer PII access for an investigation.,APPROVE,F5,F,Rule F5 applies: Security has standing access to Customer PII for investigations.
+22,Fernwood Systems,Employee,Engineering,Customer PII,1,false,"Prior manager approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Employee with one prior approval requests Customer PII access to debug a data issue.,ESCALATE,F5,F,"Rule F5 applies: Engineering may access Customer PII for debugging with one prior approval, pending further review."
+23,Fernwood Systems,Manager,Engineering,Customer PII,1,false,"Prior manager approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Manager with one prior approval requests Customer PII access for debugging.,ESCALATE,F5,F,"Rule F5 applies: Engineering may access Customer PII for debugging with one prior approval, pending further review."
+24,Fernwood Systems,Employee,Engineering,Customer PII,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Employee with zero prior approvals requests Customer PII access.,DENY,F5,F,"Rule F5 applies: outside Support, Security, and approved Engineering debugging requests, Customer PII access is denied."
+25,Fernwood Systems,Manager,Sales,Customer PII,2,false,"Prior manager approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Sales Manager with two prior approvals requests Customer PII access.,DENY,F5,F,"Rule F5 applies: outside Support, Security, and approved Engineering debugging requests, Customer PII access is denied."
+26,Fernwood Systems,Intern,Engineering,Production Database,2,false,"Prior manager approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Intern with two prior approvals requests Production Database access.,DENY,F6,F,"Rule F6 applies: Interns are denied Production Database access outright, a hard ceiling regardless of department."
+27,Fernwood Systems,Intern,Engineering,Production Database,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Intern with zero prior approvals requests Production Database access.,DENY,F6,F,"Rule F6 applies: Interns are denied Production Database access outright, a hard ceiling regardless of department."
+28,Fernwood Systems,Contractor,Engineering,Production Database,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Contractor requests Production Database access.,ESCALATE,F6,F,Rule F6 applies: Contractors in Engineering require review before granting Production Database access.
+29,Fernwood Systems,Contractor,Engineering,Production Database,2,false,"Prior manager approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Contractor with two prior approvals requests Production Database access.,ESCALATE,F6,F,Rule F6 applies: Contractors in Engineering require review before granting Production Database access.
+30,Fernwood Systems,Employee,Engineering,Production Database,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Employee requests Production Database access.,APPROVE,F6,F,"Rule F6 applies: Employees, Managers, and Admins in Engineering have standing Production Database access."
+31,Fernwood Systems,Manager,Engineering,Production Database,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Manager requests Production Database access.,APPROVE,F6,F,"Rule F6 applies: Employees, Managers, and Admins in Engineering have standing Production Database access."
+32,Fernwood Systems,Contractor,Engineering,Source Code Repository,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Contractor requests Source Code Repository access.,APPROVE,F7,F,"Rule F7 applies: Engineering has standing Source Code Repository access regardless of role, including Contractors and Interns on the team."
+33,Fernwood Systems,Intern,Engineering,Source Code Repository,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Intern requests Source Code Repository access.,APPROVE,F7,F,"Rule F7 applies: Engineering has standing Source Code Repository access regardless of role, including Contractors and Interns on the team."
+34,Fernwood Systems,Contractor,Sales,Source Code Repository,3,false,"Prior manager approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Sales Contractor with three prior approvals requests Source Code Repository access.,DENY,F7,F,Rule F7 applies: Contractors outside Engineering are denied Source Code Repository access outright.
+35,Fernwood Systems,Contractor,Support,Source Code Repository,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Support Contractor requests Source Code Repository access.,DENY,F7,F,Rule F7 applies: Contractors outside Engineering are denied Source Code Repository access outright.
+36,Fernwood Systems,Employee,Finance,Source Code Repository,1,false,"Prior manager approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Finance Employee with one prior approval requests Source Code Repository access to review a billing integration.,ESCALATE,F7,F,"Rule F7 applies: outside Engineering, Source Code Repository access may be escalated with one prior approval."
+37,Fernwood Systems,Manager,Sales,Source Code Repository,1,false,"Prior manager approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Sales Manager with one prior approval requests Source Code Repository access.,ESCALATE,F7,F,"Rule F7 applies: outside Engineering, Source Code Repository access may be escalated with one prior approval."
+38,Fernwood Systems,Employee,People,Employee Records,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: Unknown",A People (HR) Employee requests Employee Records access.,APPROVE,F8,F,Rule F8 applies: People (HR) staff have standing access to Employee Records.
+39,Fernwood Systems,Manager,Sales,Employee Records,3,false,"Prior manager approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: Unknown",A Sales Manager with three prior approvals requests Employee Records access; the request doesn't say whether it's for their own direct report.,ESCALATE,F8,F,"Rule F8 applies: when it is not stated whether the records belong to the Manager's own direct report, this is escalated for clarification rather than assumed either way."
+40,Fernwood Systems,Manager,Finance,Employee Records,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: Unknown",A Finance Manager requests Employee Records access without stating whose records they are.,ESCALATE,F8,F,"Rule F8 applies: when it is not stated whether the records belong to the Manager's own direct report, this is escalated for clarification rather than assumed either way."
+41,Fernwood Systems,Manager,Support,Employee Records,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: No",A Support Manager requests Employee Records access for someone confirmed not to be their own direct report.,DENY,F8,F,"Rule F8 applies: without standing access or a qualifying prior approval, Employee Records access is denied."
+42,Fernwood Systems,Employee,Sales,Employee Records,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: Unknown",A Sales Employee with no approvals requests Employee Records access.,DENY,F8,F,"Rule F8 applies: without standing access or a qualifying prior approval, Employee Records access is denied."
+43,Fernwood Systems,Employee,Finance,Vendor Contracts,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Finance Employee requests Vendor Contracts access.,APPROVE,F9,F,Rule F9 applies: Finance has standing access to Vendor Contracts.
+44,Fernwood Systems,Manager,Sales,Vendor Contracts,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Sales Manager requests Vendor Contracts access.,APPROVE,F9,F,Rule F9 applies: Managers and Admins within Sales have standing access to Vendor Contracts.
+45,Fernwood Systems,Employee,Sales,Vendor Contracts,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Sales Employee requests Vendor Contracts access.,ESCALATE,F9,F,Rule F9 applies: other Sales staff may be escalated for Vendor Contracts access pending further review.
+46,Fernwood Systems,Intern,Sales,Vendor Contracts,1,false,"Prior manager approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Sales Intern with one prior approval requests Vendor Contracts access.,ESCALATE,F9,F,Rule F9 applies: other Sales staff may be escalated for Vendor Contracts access pending further review.
+47,Fernwood Systems,Employee,Engineering,Vendor Contracts,3,false,"Prior manager approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Employee with three prior approvals requests Vendor Contracts access.,DENY,F9,F,"Rule F9 applies: outside Finance and Sales, Vendor Contracts access is denied."
+48,Fernwood Systems,Employee,Engineering,internal design-tools wiki,2,false,"Prior manager approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource","An Engineering Employee with two prior approvals requests access to the internal design-tools wiki, a system with no dedicated rule.",APPROVE,F10,F,"Rule F10 applies: for an unlisted system, two or more prior approvals is approved under the catch-all."
+49,Fernwood Systems,Employee,Sales,a newly-launched partner portal,1,false,"Prior manager approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Sales Employee with one prior approval requests access to a newly-launched partner portal that predates any specific policy for it.,ESCALATE,F10,F,"Rule F10 applies: for an unlisted system, exactly one prior approval is escalated under the catch-all."
+50,Fernwood Systems,Employee,Support,the legacy ticketing archive,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Support Employee with zero prior approvals requests access to the legacy ticketing archive.,DENY,F10,F,"Rule F10 applies: for an unlisted system with zero prior approvals, the catch-all denies the request."
+51,Fernwood Systems,Manager,Engineering,Employee Records,3,false,"Prior manager approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: Unknown",An Engineering Manager with three prior approvals requests Employee Records access. The request does not say whose records these are; the manager mentions they've been with Fernwood for six years.,ESCALATE,F8,F,"Rule F8 applies: when it is not stated whether the records belong to the Manager's own direct report, this is escalated for clarification rather than assumed either way."
+52,Fernwood Systems,Employee,Engineering,Production Database,2,true,"Prior manager approvals already obtained: 2
+Requester's account currently in offboarding: Yes
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Employee with two prior approvals requests Production Database access. Their account happens to already be in the offboarding process after a role change was finalized this morning.,DENY,F1,F,"Rule F1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals."
+53,Fernwood Systems,Admin,Finance,Financial Reports,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource","An Admin who happens to sit in the Finance department requests Financial Reports access, describing it as routine year-end review work.",APPROVE,F4,F,Rule F4 applies: Finance department staff have standing access to Finance-restricted systems.
+54,Fernwood Systems,Employee,Engineering,a brand-new AI code-review tool,1,false,"Prior manager approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",An Engineering Employee with one prior approval requests access to a brand-new AI code-review tool the team started piloting last week; it doesn't appear anywhere in the current policy.,ESCALATE,F10,F,"Rule F10 applies: for an unlisted system, exactly one prior approval is escalated under the catch-all."
+55,Fernwood Systems,Intern,Engineering,Source Code Repository,3,false,"Prior manager approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource","An Engineering Intern with three prior approvals from senior staff requests Source Code Repository access, noting the unusually high approval count.",APPROVE,F7,F,"Rule F7 applies: Engineering has standing Source Code Repository access regardless of role, including Contractors and Interns on the team."
+56,Fernwood Systems,Manager,Sales,Admin Console,1,false,"Prior manager approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource","A Sales Manager requests Admin Console access, citing a single approval from the VP of Sales as sufficient given the urgency of a client demo.",DENY,F2,F,"Rule F2 applies: only Admins have standing Admin Console access, and this request has neither Admin standing nor a qualifying Manager approval count."
+57,Fernwood Systems,Employee,Security,Incident Response Tools,0,true,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: Yes
+Active declared security incident right now: Yes
+Records requested belong to requester's own direct report: N/A for this resource","A Security Employee requests Incident Response Tools access during an active incident, but their own account is mid-offboarding after resigning yesterday.",DENY,F1,F,"Rule F1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals."
+58,Fernwood Systems,Contractor,Engineering,Production Database,3,false,"Prior manager approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource","An Engineering Contractor with three prior approvals, more than any Employee in the same scenario set needed, requests Production Database access.",ESCALATE,F6,F,Rule F6 applies: Contractors in Engineering require review before granting Production Database access.
+59,Fernwood Systems,Manager,People,Employee Records,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: No",A Manager who also happens to work in the People (HR) department requests Employee Records access for someone who is explicitly not their direct report.,APPROVE,F8,F,Rule F8 applies: People (HR) staff have standing access to Employee Records.
+60,Fernwood Systems,Employee,Engineering,Customer PII,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: Yes
+Records requested belong to requester's own direct report: N/A for this resource","An Engineering Employee requests Customer PII access, and separately mentions there's an active security incident going on elsewhere at the company, though it has nothing to do with this specific request.",DENY,F5,F,"Rule F5 applies: outside Support, Security, and approved Engineering debugging requests, Customer PII access is denied."
+61,Meridian Health,Clinician,Clinical Care,Patient Records (EHR),2,true,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: Yes
+Active declared clinical emergency right now: Yes","A Clinician in Clinical Care whose account is currently being offboarded requests Patient Records access, even with an active clinical emergency underway.",DENY,M1,M,"Rule M1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals."
+62,Meridian Health,Compliance Officer,Compliance,Audit Logs,0,true,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: Yes
+Active declared clinical emergency right now: No",A Compliance Officer whose contract has already ended requests Audit Logs access.,DENY,M1,M,"Rule M1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals."
+63,Meridian Health,Clinician,Clinical Care,Patient Records (EHR),0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Clinician in Clinical Care requests Patient Records access for a patient on their own service.,APPROVE,M2,M,Rule M2 applies: Clinicians and Nurses in Clinical Care have standing access to Patient Records for treatment purposes.
+64,Meridian Health,Nurse,Clinical Care,Patient Records (EHR),0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Nurse in Clinical Care requests Patient Records access.,APPROVE,M2,M,Rule M2 applies: Clinicians and Nurses in Clinical Care have standing access to Patient Records for treatment purposes.
+65,Meridian Health,Clinician,Research,Patient Records (EHR),0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: Yes","A Clinician normally assigned to Research requests Patient Records access outside their usual assignment, during an active declared clinical emergency, with no prior approval yet.",ESCALATE,M2,M,"Rule M2 applies: under the break-glass emergency clause, a Clinician requesting Patient Records outside their normal assignment during an active clinical emergency is escalated for expedited review without a prior approval."
+66,Meridian Health,Billing Coordinator,Billing,Patient Records (EHR),1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Billing Coordinator with one prior approval requests Patient Records access to resolve a claims discrepancy.,ESCALATE,M2,M,"Rule M2 applies: a Billing Coordinator may access Patient Records with one prior approval, escalated as scope-limited to billing purposes only."
+67,Meridian Health,Billing Coordinator,Billing,Patient Records (EHR),0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Billing Coordinator with no prior approval requests Patient Records access.,DENY,M2,M,"Rule M2 applies: without standing access, break-glass emergency grounds, or a qualifying Billing Coordinator approval, Patient Records access is denied."
+68,Meridian Health,Clinician,Research,Patient Records (EHR),2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","A Clinician assigned to Research requests Patient Records access outside a clinical emergency, despite having two prior approvals on hand.",DENY,M2,M,"Rule M2 applies: without standing access, break-glass emergency grounds, or a qualifying Billing Coordinator approval, Patient Records access is denied."
+69,Meridian Health,Clinician,Clinical Care,Pharmacy System,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Clinician requests Pharmacy System access to review a medication order.,APPROVE,M3,M,Rule M3 applies: Clinicians have standing access to the Pharmacy System.
+70,Meridian Health,Nurse,Clinical Care,Pharmacy System,1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Nurse with one prior approval requests Pharmacy System access.,ESCALATE,M3,M,"Rule M3 applies: a Nurse may access the Pharmacy System with one prior approval, escalated for review."
+71,Meridian Health,Nurse,Clinical Care,Pharmacy System,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Nurse with no prior approval requests Pharmacy System access.,DENY,M3,M,"Rule M3 applies: without standing access or a qualifying Nurse approval, Pharmacy System access is denied."
+72,Meridian Health,IT Admin,IT,Pharmacy System,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",An IT Admin requests Pharmacy System access to run scheduled maintenance.,APPROVE,M3,M,Rule M3 applies: IT Admin has standing access to the Pharmacy System for maintenance.
+73,Meridian Health,Compliance Officer,Compliance,Pharmacy System,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Compliance Officer requests Pharmacy System access for an audit of controlled-substance dispensing.,APPROVE,M3,M,Rule M3 applies: the Compliance Officer has standing access to the Pharmacy System for audit purposes.
+74,Meridian Health,Billing Coordinator,Billing,Pharmacy System,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Billing Coordinator with three prior approvals requests Pharmacy System access.,DENY,M3,M,"Rule M3 applies: without standing access or a qualifying Nurse approval, Pharmacy System access is denied."
+75,Meridian Health,Billing Coordinator,Billing,Billing/Claims System,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Billing Coordinator requests Billing/Claims System access.,APPROVE,M4,M,Rule M4 applies: Billing Coordinators have standing access to the Billing/Claims System.
+76,Meridian Health,Compliance Officer,Compliance,Billing/Claims System,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Compliance Officer requests Billing/Claims System access for a claims audit.,APPROVE,M4,M,Rule M4 applies: the Compliance Officer has standing access to the Billing/Claims System for audit purposes.
+77,Meridian Health,Clinician,Clinical Care,Billing/Claims System,2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Clinician with two prior approvals requests Billing/Claims System access.,ESCALATE,M4,M,"Rule M4 applies: without standing access, the Billing/Claims System may be escalated with two prior approvals."
+78,Meridian Health,Nurse,Clinical Care,Billing/Claims System,1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Nurse with one prior approval requests Billing/Claims System access.,DENY,M4,M,"Rule M4 applies: without standing access or two prior approvals, Billing/Claims System access is denied."
+79,Meridian Health,IT Admin,IT,Billing/Claims System,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",An IT Admin with no prior approval requests Billing/Claims System access.,DENY,M4,M,"Rule M4 applies: without standing access or two prior approvals, Billing/Claims System access is denied."
+80,Meridian Health,Clinician,Clinical Care,Lab Results,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Clinician requests Lab Results access for a patient under their care.,APPROVE,M5,M,Rule M5 applies: Clinicians and Nurses have standing access to Lab Results.
+81,Meridian Health,Nurse,Clinical Care,Lab Results,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Nurse requests Lab Results access.,APPROVE,M5,M,Rule M5 applies: Clinicians and Nurses have standing access to Lab Results.
+82,Meridian Health,Billing Coordinator,Billing,Lab Results,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Billing Coordinator requests Lab Results access.,DENY,M5,M,"Rule M5 applies: Billing Coordinators are denied Lab Results access outright, a hard rule since it is never needed for billing."
+83,Meridian Health,Billing Coordinator,Billing,Lab Results,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","A Billing Coordinator with three prior approvals requests Lab Results access, arguing the high approval count should be enough.",DENY,M5,M,"Rule M5 applies: Billing Coordinators are denied Lab Results access outright, a hard rule since it is never needed for billing."
+84,Meridian Health,Compliance Officer,Compliance,Lab Results,1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Compliance Officer with one prior approval requests Lab Results access for an audit.,ESCALATE,M5,M,"Rule M5 applies: the Compliance Officer may access Lab Results with one prior approval, escalated for review."
+85,Meridian Health,Compliance Officer,Compliance,Research Data Repository,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Compliance Officer requests Research Data Repository access for governance review.,APPROVE,M6,M,Rule M6 applies: the Compliance Officer and IT Admin have standing access to the Research Data Repository for data governance.
+86,Meridian Health,IT Admin,IT,Research Data Repository,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",An IT Admin requests Research Data Repository access.,APPROVE,M6,M,Rule M6 applies: the Compliance Officer and IT Admin have standing access to the Research Data Repository for data governance.
+87,Meridian Health,Clinician,Research,Research Data Repository,2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","A Clinician in Research with two prior approvals, representing IRB sign-off, requests Research Data Repository access.",ESCALATE,M6,M,"Rule M6 applies: a Clinician may access the Research Data Repository with two prior approvals, representing IRB sign-off, escalated for review."
+88,Meridian Health,Clinician,Research,Research Data Repository,1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Clinician in Research with only one prior approval requests Research Data Repository access.,DENY,M6,M,"Rule M6 applies: without standing access or a qualifying Clinician approval count, Research Data Repository access is denied."
+89,Meridian Health,Nurse,Research,Research Data Repository,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Nurse in Research with three prior approvals requests Research Data Repository access.,DENY,M6,M,"Rule M6 applies: without standing access or a qualifying Clinician approval count, Research Data Repository access is denied."
+90,Meridian Health,Compliance Officer,Compliance,Audit Logs,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Compliance Officer requests Audit Logs access.,APPROVE,M7,M,Rule M7 applies: the Compliance Officer and IT Admin have standing access to Audit Logs.
+91,Meridian Health,IT Admin,IT,Audit Logs,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",An IT Admin requests Audit Logs access.,APPROVE,M7,M,Rule M7 applies: the Compliance Officer and IT Admin have standing access to Audit Logs.
+92,Meridian Health,Clinician,Clinical Care,Audit Logs,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Clinician with three prior approvals requests Audit Logs access.,DENY,M7,M,"Rule M7 applies: everyone else is denied Audit Logs access outright, with no escalate path, even with prior approvals."
+93,Meridian Health,Nurse,Clinical Care,Audit Logs,2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Nurse with two prior approvals requests Audit Logs access.,DENY,M7,M,"Rule M7 applies: everyone else is denied Audit Logs access outright, with no escalate path, even with prior approvals."
+94,Meridian Health,IT Admin,IT,a new patient-portal messaging tool,1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",An IT Admin with one prior approval requests access to a new patient-portal messaging tool that isn't covered by an explicit rule yet.,ESCALATE,M8,M,"Rule M8 applies: for an unlisted system, one or more prior approvals is escalated under the catch-all."
+95,Meridian Health,Clinician,Clinical Care,a vendor-run telehealth scheduling add-on,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Clinician with no prior approvals requests access to a vendor-run telehealth scheduling add-on with no dedicated rule.,DENY,M8,M,"Rule M8 applies: for an unlisted system with zero prior approvals, the catch-all denies the request."
+96,Meridian Health,Billing Coordinator,Billing,a legacy claims-archive viewer,2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","A Billing Coordinator with two prior approvals requests access to a legacy claims-archive viewer, hoping a high approval count is enough to skip the human review step.",ESCALATE,M8,M,"Rule M8 applies: for an unlisted system, one or more prior approvals is escalated under the catch-all."
+97,Meridian Health,Clinician,Clinical Care,Patient Records (EHR),0,true,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: Yes
+Active declared clinical emergency right now: Yes","A Clinician in Clinical Care requests Patient Records access during an active clinical emergency, but their own account is already flagged for offboarding after handing in notice this week.",DENY,M1,M,"Rule M1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals."
+98,Meridian Health,Nurse,Clinical Care,Lab Results,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","A Nurse with an unusually high approval count of three requests Lab Results access, though standing access alone should already cover it.",APPROVE,M5,M,Rule M5 applies: Clinicians and Nurses have standing access to Lab Results.
+99,Meridian Health,Billing Coordinator,Billing,Lab Results,5,false,"Prior approvals already obtained: 5
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","A Billing Coordinator with five prior approvals, far more than any other scenario in this set, requests Lab Results access, arguing the sheer approval count should override the usual restriction.",DENY,M5,M,"Rule M5 applies: Billing Coordinators are denied Lab Results access outright, a hard rule since it is never needed for billing."
+100,Meridian Health,Compliance Officer,Compliance,Audit Logs,10,false,"Prior approvals already obtained: 10
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","A Compliance Officer requests Audit Logs access, which they already have standing access to; the request mentions ten prior approvals as if that were relevant.",APPROVE,M7,M,Rule M7 applies: the Compliance Officer and IT Admin have standing access to Audit Logs.
+101,Meridian Health,Clinician,Clinical Care,a hospital-wide staffing dashboard,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: Yes","A Clinician requests access to a hospital-wide staffing dashboard, a system with no dedicated rule, during an active clinical emergency; the emergency flag doesn't apply here since this isn't Patient Records.",DENY,M8,M,"Rule M8 applies: for an unlisted system with zero prior approvals, the catch-all denies the request."
+102,Meridian Health,IT Admin,Research,Research Data Repository,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","An IT Admin who happens to be assigned to the Research department requests Research Data Repository access, describing it as routine infrastructure work.",APPROVE,M6,M,Rule M6 applies: the Compliance Officer and IT Admin have standing access to the Research Data Repository for data governance.
+103,Meridian Health,Nurse,Clinical Care,Patient Records (EHR),5,false,"Prior approvals already obtained: 5
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","A Nurse in Clinical Care with five prior approvals requests Patient Records access, mentioning the high approval count even though standing access already applies.",APPROVE,M2,M,Rule M2 applies: Clinicians and Nurses in Clinical Care have standing access to Patient Records for treatment purposes.
+104,Meridian Health,Compliance Officer,Billing,Billing/Claims System,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","A Compliance Officer who happens to sit in the Billing department requests Billing/Claims System access, describing it as a routine audit visit.",APPROVE,M4,M,Rule M4 applies: the Compliance Officer has standing access to the Billing/Claims System for audit purposes.
+105,Vertex Capital,Trader,Trading Desk,Trading System (Order Entry),0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Trader requests Trading System access.,APPROVE,V2,V,Rule V2 applies: Traders and Portfolio Managers have standing access to the Trading System.
+106,Vertex Capital,Portfolio Manager,Portfolio Management,Trading System (Order Entry),0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Portfolio Manager requests Trading System access.,APPROVE,V2,V,Rule V2 applies: Traders and Portfolio Managers have standing access to the Trading System.
+107,Vertex Capital,Admin,IT,Trading System (Order Entry),0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",An Admin requests Trading System access for system administration purposes.,APPROVE,V2,V,"Rule V2 applies: Admin has standing access to the Trading System for system administration, not trading."
+108,Vertex Capital,Compliance Officer,Compliance,Trading System (Order Entry),0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Compliance Officer requests Trading System access.,DENY,V2,V,"Rule V2 applies: the Compliance Officer is denied Trading System access outright, a hard segregation-of-duties rule with no exceptions, since compliance staff can never place trades."
+109,Vertex Capital,Compliance Officer,Compliance,Trading System (Order Entry),5,false,"Prior approvals already obtained: 5
+Requester's account currently in offboarding: No","A Compliance Officer with five prior approvals, far more than usual, still requests Trading System access.",DENY,V2,V,"Rule V2 applies: the Compliance Officer is denied Trading System access outright, a hard segregation-of-duties rule with no exceptions, since compliance staff can never place trades."
+110,Vertex Capital,Ops Analyst,Operations,Trading System (Order Entry),2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No",An Ops Analyst with two prior approvals requests Trading System access.,ESCALATE,V2,V,"Rule V2 applies: an Ops Analyst may access the Trading System with two prior approvals, escalated for review."
+111,Vertex Capital,Portfolio Manager,Portfolio Management,Client Accounts,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Portfolio Manager requests Client Accounts access.,APPROVE,V3,V,Rule V3 applies: Portfolio Managers have standing access to Client Accounts.
+112,Vertex Capital,Ops Analyst,Operations,Client Accounts,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",An Ops Analyst requests Client Accounts access for servicing.,APPROVE,V3,V,Rule V3 applies: Ops Analyst has standing access to Client Accounts for servicing.
+113,Vertex Capital,Compliance Officer,Compliance,Client Accounts,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Compliance Officer requests Client Accounts access for oversight.,APPROVE,V3,V,Rule V3 applies: the Compliance Officer has standing access to Client Accounts for oversight.
+114,Vertex Capital,Trader,Trading Desk,Client Accounts,1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No",A Trader with one prior approval requests Client Accounts access to check on a client's position.,ESCALATE,V3,V,"Rule V3 applies: a Trader may access Client Accounts with one prior approval, escalated since Traders need visibility sometimes but not standing access."
+115,Vertex Capital,Trader,Trading Desk,Client Accounts,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Trader with no prior approval requests Client Accounts access.,DENY,V3,V,"Rule V3 applies: without standing access or a qualifying Trader approval, Client Accounts access is denied."
+116,Vertex Capital,Admin,IT,Client Accounts,2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No",An Admin with two prior approvals requests Client Accounts access.,DENY,V3,V,"Rule V3 applies: without standing access or a qualifying Trader approval, Client Accounts access is denied."
+117,Vertex Capital,Compliance Officer,Compliance,Trade Blotter,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Compliance Officer requests Trade Blotter access.,APPROVE,V4,V,"Rule V4 applies: Compliance Officer, Ops Analyst, Traders, Portfolio Managers, and Admin all have standing access to the Trade Blotter."
+118,Vertex Capital,Ops Analyst,Operations,Trade Blotter,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",An Ops Analyst requests Trade Blotter access.,APPROVE,V4,V,"Rule V4 applies: Compliance Officer, Ops Analyst, Traders, Portfolio Managers, and Admin all have standing access to the Trade Blotter."
+119,Vertex Capital,Trader,Trading Desk,Trade Blotter,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Trader requests Trade Blotter access for their own trade records.,APPROVE,V4,V,"Rule V4 applies: Compliance Officer, Ops Analyst, Traders, Portfolio Managers, and Admin all have standing access to the Trade Blotter."
+120,Vertex Capital,Compliance Officer,Compliance,Model Risk Repository,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Compliance Officer requests Model Risk Repository access for model validation.,APPROVE,V5,V,Rule V5 applies: the Compliance Officer has standing access to the Model Risk Repository as part of their model validation duty.
+121,Vertex Capital,Admin,IT,Model Risk Repository,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",An Admin requests Model Risk Repository access for hosting purposes.,APPROVE,V5,V,Rule V5 applies: Admin has standing access to the Model Risk Repository for hosting.
+122,Vertex Capital,Trader,Trading Desk,Model Risk Repository,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No","A Trader with three prior approvals requests Model Risk Repository access, arguing the approval count should be enough.",DENY,V5,V,"Rule V5 applies: Traders are denied Model Risk Repository access outright, a hard segregation-of-duties rule, since Traders should not have direct access to the risk models governing their own limits."
+123,Vertex Capital,Trader,Trading Desk,Model Risk Repository,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Trader with no prior approval requests Model Risk Repository access.,DENY,V5,V,"Rule V5 applies: Traders are denied Model Risk Repository access outright, a hard segregation-of-duties rule, since Traders should not have direct access to the risk models governing their own limits."
+124,Vertex Capital,Portfolio Manager,Portfolio Management,Model Risk Repository,1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No",A Portfolio Manager with one prior approval requests Model Risk Repository access.,ESCALATE,V5,V,"Rule V5 applies: a Portfolio Manager may access the Model Risk Repository with one prior approval, escalated for review."
+125,Vertex Capital,Portfolio Manager,Portfolio Management,Model Risk Repository,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Portfolio Manager with no prior approval requests Model Risk Repository access.,DENY,V5,V,"Rule V5 applies: without standing access or a qualifying Portfolio Manager approval, Model Risk Repository access is denied."
+126,Vertex Capital,Compliance Officer,Compliance,Regulatory Filings,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Compliance Officer requests Regulatory Filings access.,APPROVE,V6,V,Rule V6 applies: the Compliance Officer has standing access to Regulatory Filings.
+127,Vertex Capital,Admin,IT,Regulatory Filings,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",An Admin requests Regulatory Filings access.,APPROVE,V6,V,Rule V6 applies: Admin has standing access to Regulatory Filings.
+128,Vertex Capital,Portfolio Manager,Portfolio Management,Regulatory Filings,2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No",A Portfolio Manager with two prior approvals requests Regulatory Filings access.,ESCALATE,V6,V,"Rule V6 applies: a Portfolio Manager may access Regulatory Filings with two prior approvals, escalated for review."
+129,Vertex Capital,Portfolio Manager,Portfolio Management,Regulatory Filings,1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No",A Portfolio Manager with only one prior approval requests Regulatory Filings access.,DENY,V6,V,"Rule V6 applies: everyone else is denied Regulatory Filings access, with no exceptions."
+130,Vertex Capital,Trader,Trading Desk,Regulatory Filings,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No",A Trader with three prior approvals requests Regulatory Filings access.,DENY,V6,V,"Rule V6 applies: everyone else is denied Regulatory Filings access, with no exceptions."
+131,Vertex Capital,Compliance Officer,Compliance,Audit Trail,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Compliance Officer requests Audit Trail access.,APPROVE,V7,V,Rule V7 applies: the Compliance Officer and Admin have standing access to the Audit Trail.
+132,Vertex Capital,Admin,IT,Audit Trail,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",An Admin requests Audit Trail access.,APPROVE,V7,V,Rule V7 applies: the Compliance Officer and Admin have standing access to the Audit Trail.
+133,Vertex Capital,Portfolio Manager,Portfolio Management,Audit Trail,5,false,"Prior approvals already obtained: 5
+Requester's account currently in offboarding: No",A Portfolio Manager with five prior approvals requests Audit Trail access.,DENY,V7,V,"Rule V7 applies: everyone else is denied Audit Trail access outright, with no escalate path."
+134,Vertex Capital,Ops Analyst,Operations,a new counterparty-onboarding portal,2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No",An Ops Analyst with two prior approvals requests access to a new counterparty-onboarding portal with no dedicated rule.,APPROVE,V8,V,"Rule V8 applies: for an unlisted system, two or more prior approvals is approved under the catch-all."
+135,Vertex Capital,Trader,Trading Desk,a third-party market-data terminal,1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No",A Trader with one prior approval requests access to a third-party market-data terminal that isn't covered by name in the policy.,ESCALATE,V8,V,"Rule V8 applies: for an unlisted system, exactly one prior approval is escalated under the catch-all."
+136,Vertex Capital,Portfolio Manager,Portfolio Management,an internal scenario-analysis tool,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",A Portfolio Manager with no prior approval requests access to an internal scenario-analysis tool with no dedicated rule.,DENY,V8,V,"Rule V8 applies: for an unlisted system with zero prior approvals, the catch-all denies the request."
+137,Vertex Capital,Compliance Officer,Compliance,Trading System (Order Entry),10,false,"Prior approvals already obtained: 10
+Requester's account currently in offboarding: No","A Compliance Officer with ten prior approvals, an unusually large number, requests Trading System access, arguing that enough sign-off should override the usual restriction.",DENY,V2,V,"Rule V2 applies: the Compliance Officer is denied Trading System access outright, a hard segregation-of-duties rule with no exceptions, since compliance staff can never place trades."
+138,Vertex Capital,Trader,Trading Desk,Model Risk Repository,5,true,"Prior approvals already obtained: 5
+Requester's account currently in offboarding: Yes","A Trader with five prior approvals requests Model Risk Repository access; separately, their account is already in the offboarding process after a transfer to a different desk.",DENY,V1,V,"Rule V1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals."
+139,Vertex Capital,Portfolio Manager,Portfolio Management,Trade Blotter,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No","A Portfolio Manager requests Trade Blotter access, and the request mentions in passing that the desk had a strong quarter, which has no bearing on the access decision.",APPROVE,V4,V,"Rule V4 applies: Compliance Officer, Ops Analyst, Traders, Portfolio Managers, and Admin all have standing access to the Trade Blotter."
+140,Vertex Capital,Ops Analyst,Operations,Trading System (Order Entry),1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No","An Ops Analyst with one prior approval requests Trading System access, one short of the two-approval threshold, framing it as urgent due to a settlement deadline.",DENY,V2,V,"Rule V2 applies: without standing access or a qualifying Ops Analyst approval count, Trading System access is denied."
+141,Vertex Capital,Admin,IT,a vendor-hosted disaster-recovery console,0,true,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: Yes","An Admin requests access to a vendor-hosted disaster-recovery console with no dedicated rule, but their own account is currently being offboarded.",DENY,V1,V,"Rule V1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals."
+142,Vertex Capital,Trader,Trading Desk,Audit Trail,8,false,"Prior approvals already obtained: 8
+Requester's account currently in offboarding: No","A Trader with eight prior approvals, the highest approval count in this scenario set, requests Audit Trail access.",DENY,V7,V,"Rule V7 applies: everyone else is denied Audit Trail access outright, with no escalate path."
+143,Vertex Capital,Portfolio Manager,Portfolio Management,Regulatory Filings,5,false,"Prior approvals already obtained: 5
+Requester's account currently in offboarding: No","A Portfolio Manager with five prior approvals, well above the two normally needed, requests Regulatory Filings access.",ESCALATE,V6,V,"Rule V6 applies: a Portfolio Manager may access Regulatory Filings with two prior approvals, escalated for review."
+144,Vertex Capital,Compliance Officer,Compliance,Model Risk Repository,0,true,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: Yes","A Compliance Officer requests Model Risk Repository access, which they'd normally have standing access to, but their contract already ended yesterday.",DENY,V1,V,"Rule V1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals."
+145,Vertex Capital,Ops Analyst,Operations,Audit Trail,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No","An Ops Analyst requests access to Vertex's Audit Trail. This is a distinct system from Meridian's Audit Logs; both happen to be audit-flavored systems, but the two companies grade them under completely separate rules.",DENY,V7,V,"Rule V7 applies: everyone else is denied Audit Trail access outright, with no escalate path."
+146,Meridian Health,Nurse,Clinical Care,Audit Logs,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","A Nurse requests access to Meridian's Audit Logs, a system that sounds similar to Vertex's Audit Trail but belongs to an entirely different company's policy.",DENY,M7,M,"Rule M7 applies: everyone else is denied Audit Logs access outright, with no escalate path, even with prior approvals."
+147,Fernwood Systems,Manager,People,Employee Records,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: Yes","A People (HR) Manager at Fernwood requests Employee Records access for their own direct report. This is a corporate HR system, unrelated to a hospital's Patient Records (EHR), despite both being called 'Records'.",APPROVE,F8,F,Rule F8 applies: People (HR) staff have standing access to Employee Records.
+148,Meridian Health,IT Admin,IT,Patient Records (EHR),0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No","An IT Admin at Meridian requests Patient Records (EHR) access for system maintenance. This is a clinical records system, unrelated to a corporation's Employee Records, despite both being called 'Records'.",APPROVE,M2,M,Rule M2 applies: IT Admin has standing access to Patient Records for system maintenance.
+149,Fernwood Systems,Employee,Support,a new team scheduling tool,3,false,"Prior manager approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Support Employee with three prior approvals requests access to a new team scheduling tool with no dedicated rule.,APPROVE,F10,F,"Rule F10 applies: for an unlisted system, two or more prior approvals is approved under the catch-all."
+150,Fernwood Systems,Contractor,Sales,an unlisted vendor portal,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource",A Sales Contractor with zero prior approvals requests access to an unlisted vendor portal.,DENY,F10,F,"Rule F10 applies: for an unlisted system with zero prior approvals, the catch-all denies the request."
+151,Fernwood Systems,Employee,Support,Vendor Contracts,0,false,"Prior manager approvals already obtained: 0
+Requester's account currently in offboarding: No
+Active declared security incident right now: No
+Records requested belong to requester's own direct report: N/A for this resource","A Support Employee requests Vendor Contracts access, well outside Finance or Sales.",DENY,F9,F,"Rule F9 applies: outside Finance and Sales, Vendor Contracts access is denied."
+152,Meridian Health,Nurse,Research,Pharmacy System,2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Nurse assigned to Research with two prior approvals requests Pharmacy System access.,ESCALATE,M3,M,"Rule M3 applies: a Nurse may access the Pharmacy System with one prior approval, escalated for review."
+153,Meridian Health,Nurse,Clinical Care,Billing/Claims System,2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Nurse with two prior approvals requests Billing/Claims System access.,ESCALATE,M4,M,"Rule M4 applies: without standing access, the Billing/Claims System may be escalated with two prior approvals."
+154,Meridian Health,Compliance Officer,Compliance,Lab Results,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Compliance Officer with three prior approvals requests Lab Results access as part of an audit.,ESCALATE,M5,M,"Rule M5 applies: the Compliance Officer may access Lab Results with one prior approval, escalated for review."
+155,Meridian Health,Clinician,Research,Research Data Repository,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No
+Active declared clinical emergency right now: No",A Clinician in Research with three prior approvals requests Research Data Repository access.,ESCALATE,M6,M,"Rule M6 applies: a Clinician may access the Research Data Repository with two prior approvals, representing IRB sign-off, escalated for review."
+156,Vertex Capital,Ops Analyst,Operations,Trading System (Order Entry),3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No",An Ops Analyst with three prior approvals requests Trading System access.,ESCALATE,V2,V,"Rule V2 applies: an Ops Analyst may access the Trading System with two prior approvals, escalated for review."
+157,Vertex Capital,Trader,Trading Desk,Client Accounts,2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No",A Trader with two prior approvals requests Client Accounts access.,ESCALATE,V3,V,"Rule V3 applies: a Trader may access Client Accounts with one prior approval, escalated since Traders need visibility sometimes but not standing access."
+158,Vertex Capital,Portfolio Manager,Portfolio Management,Model Risk Repository,2,false,"Prior approvals already obtained: 2
+Requester's account currently in offboarding: No",A Portfolio Manager with two prior approvals requests Model Risk Repository access.,ESCALATE,V5,V,"Rule V5 applies: a Portfolio Manager may access the Model Risk Repository with one prior approval, escalated for review."
+159,Vertex Capital,Compliance Officer,Compliance,a new regulatory-news feed,3,false,"Prior approvals already obtained: 3
+Requester's account currently in offboarding: No",A Compliance Officer with three prior approvals requests access to a new regulatory-news feed with no dedicated rule.,APPROVE,V8,V,"Rule V8 applies: for an unlisted system, two or more prior approvals is approved under the catch-all."
+160,Vertex Capital,Admin,IT,an unlisted internal tool,0,false,"Prior approvals already obtained: 0
+Requester's account currently in offboarding: No",An Admin with zero prior approvals requests access to an unlisted internal tool.,DENY,V8,V,"Rule V8 applies: for an unlisted system with zero prior approvals, the catch-all denies the request."
+161,Vertex Capital,Compliance Officer,Compliance,a pilot compliance-tracking app,1,false,"Prior approvals already obtained: 1
+Requester's account currently in offboarding: No",A Compliance Officer with one prior approval requests access to a pilot compliance-tracking app with no dedicated rule.,ESCALATE,V8,V,"Rule V8 applies: for an unlisted system, exactly one prior approval is escalated under the catch-all."

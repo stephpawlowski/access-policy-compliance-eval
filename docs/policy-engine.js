@@ -1,14 +1,20 @@
 /**
- * Fernwood Systems access policy engine (v2).
+ * Multi-company access policy engine (v4).
  *
- * This is the single source of truth for the policy logic used in this project:
- *  - the test generator (scripts/generate-scenarios.js) uses this file to compute
- *    the expected answer for every row in tests.csv
- *  - the live "try it yourself" simulator on the dashboard (docs/index.html) uses
- *    this exact same file, unmodified, to answer toggles instantly in the browser
+ * This is the single source of truth for the policy logic used in this project, across all
+ * three fictional companies (Fernwood Systems, Meridian Health, Vertex Capital):
+ *  - the test generator (scripts/generate-scenarios.js) uses this file to compute the expected
+ *    decision and expected rule tag for every row in tests.csv
+ *  - the live "try it yourself" simulator on the dashboard (docs/index.html) uses this exact
+ *    same file, unmodified, to answer toggles instantly in the browser
  *
- * Keeping both on one file means the simulator and the eval's answer key can never
- * drift out of sync with each other.
+ * Keeping both on one file means the simulator and the eval's answer key can never drift out of
+ * sync with each other, for any of the three companies.
+ *
+ * Every rule returns a company-prefixed rule tag (F1-F10 for Fernwood, M1-M8 for Meridian, V1-V8
+ * for Vertex) instead of a bare number. That prefix is what lets the eval's grading tell apart
+ * "the model reached the right decision" from "the model cited the right company's rule" from
+ * "the model cited the exact right rule number", which are three different questions.
  *
  * Works in both Node (via require/module.exports) and the browser (via window.PolicyEngine).
  */
@@ -19,328 +25,432 @@
     root.PolicyEngine = factory();
   }
 })(typeof self !== "undefined" ? self : this, function () {
-  const ROLES = ["Employee", "Contractor", "Intern", "Manager", "Admin"];
-
-  const DEPARTMENTS = [
-    "Engineering",
-    "Finance",
-    "Sales",
-    "Support",
-    "People",
-    "Security",
-  ];
-
-  const RESOURCES = [
-    "Billing System",
-    "Payroll System",
-    "Financial Reports",
-    "Customer PII",
-    "Production Database",
-    "Source Code Repository",
-    "Employee Records",
-    "Admin Console",
-    "Vendor Contracts",
-    "Incident Response Tools",
-    "Other / Unlisted System",
-  ];
-
-  const FINANCE_SYSTEMS = ["Billing System", "Payroll System", "Financial Reports"];
-
-  // Every approval-count threshold in the policy, pulled out into one place so the
-  // engine can be re-graded against a *different* version of the policy without
-  // touching the rule logic itself. Defaults here match policy.md exactly.
-  const DEFAULT_CONFIG = {
-    r2ManagerApprovals: 2,   // Rule 2 (Admin Console): Manager approvals needed to escalate
-    r3IncidentApprovals: 1,  // Rule 3 (Incident Response Tools): approvals needed for auto-approve during an active incident
-    r4OutsideApprovals: 1,   // Rule 4 (Finance-restricted systems): approvals needed to escalate, outside Finance
-    r5EngineeringApprovals: 1, // Rule 5 (Customer PII): approvals needed to escalate, for Engineering
-    r6OutsideApprovals: 2,   // Rule 6 (Production Database): approvals needed to escalate, outside Engineering
-    r7OutsideApprovals: 1,   // Rule 7 (Source Code Repository): approvals needed to escalate, outside Engineering
-    r8OutsideApprovals: 1,   // Rule 8 (Employee Records): approvals needed to escalate, outside People/Manager/Admin
-    r10ApproveThreshold: 2,  // Rule 10 (catch-all): approvals needed for auto-approve
-  };
-
   function result(decision, rule, citation) {
     return { decision, rule, citation };
   }
 
-  /**
-   * @param {Object} input
-   * @param {string} input.role
-   * @param {string} input.department
-   * @param {string} input.resource
-   * @param {number} input.approvals - number of prior manager approvals obtained (0, 1, or 2+)
-   * @param {boolean} input.offboarding - true if the requester is in offboarding/terminated status
-   * @param {boolean} input.incidentActive - true if there is an active declared security incident
-   * @param {boolean} [input.directReport] - for Employee Records requests by a Manager: true if the
-   *   records requested belong to the requester's own direct report, false if not, or omitted/undefined
-   *   if this isn't stated. Undefined is treated as a genuine unknown, not as false.
-   * @param {Object} [config] - optional overrides for the approval thresholds above (DEFAULT_CONFIG).
-   *   Pass a partial object to test a modified version of the policy; omit it to use the
-   *   policy exactly as written in policy.md.
-   */
-  function evaluate(input, config) {
-    const cfg = Object.assign({}, DEFAULT_CONFIG, config || {});
-    const role = input.role;
-    const department = input.department;
-    const resource = input.resource;
-    const approvals = Number(input.approvals) || 0;
-    const offboarding = !!input.offboarding;
-    const incidentActive = !!input.incidentActive;
-    const directReport = input.directReport; // true, false, or undefined (genuinely unstated)
+  // ---------------------------------------------------------------------------------------
+  // Fernwood Systems (general corporate IAM, v2 policy carried forward from v3 unmodified)
+  // ---------------------------------------------------------------------------------------
 
-    // Rule 1: offboarding override beats everything else.
+  const FERNWOOD_ROLES = ["Employee", "Contractor", "Intern", "Manager", "Admin"];
+  const FERNWOOD_DEPARTMENTS = ["Engineering", "Finance", "Sales", "Support", "People", "Security"];
+  const FERNWOOD_RESOURCES = [
+    "Billing System", "Payroll System", "Financial Reports", "Customer PII", "Production Database",
+    "Source Code Repository", "Employee Records", "Admin Console", "Vendor Contracts",
+    "Incident Response Tools", "Other / Unlisted System",
+  ];
+  const FERNWOOD_FINANCE_SYSTEMS = ["Billing System", "Payroll System", "Financial Reports"];
+  const FERNWOOD_DEFAULT_CONFIG = {
+    r2ManagerApprovals: 2,
+    r3IncidentApprovals: 1,
+    r4OutsideApprovals: 1,
+    r5EngineeringApprovals: 1,
+    r6OutsideApprovals: 2,
+    r7OutsideApprovals: 1,
+    r8OutsideApprovals: 1,
+    r10ApproveThreshold: 2,
+  };
+
+  function evaluateFernwood(input, config) {
+    const cfg = Object.assign({}, FERNWOOD_DEFAULT_CONFIG, config || {});
+    const { role, department, resource, approvals = 0, offboarding, incidentActive, directReport } = input;
+
+    // Rule 1: offboarding override, checked first, overrides everything else.
     if (offboarding) {
-      return result(
-        "DENY",
-        "R1",
-        "Rule 1: offboarded or terminated accounts lose all access immediately, regardless of role, department, resource, or prior approvals."
-      );
+      return result("DENY", "F1", "Rule F1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals.");
     }
 
-    // Rule 2: Admin Console.
     if (resource === "Admin Console") {
       if (role === "Admin") {
-        return result("APPROVE", "R2", "Rule 2: Admins have standing access to the Admin Console.");
+        return result("APPROVE", "F2", "Rule F2 applies: Admins have standing access to the Admin Console.");
       }
       if (role === "Manager" && approvals >= cfg.r2ManagerApprovals) {
-        return result(
-          "ESCALATE",
-          "R2",
-          "Rule 2: Managers with " + cfg.r2ManagerApprovals + " prior approval(s) may request Admin Console access, but it still requires final review before granting."
-        );
+        return result("ESCALATE", "F2", "Rule F2 applies: a Manager with two prior approvals is escalated for final review of the Admin Console, not auto-approved.");
       }
-      return result(
-        "DENY",
-        "R2",
-        "Rule 2: Admin Console access is restricted to the Admin role, or to Managers with two prior approvals under review."
-      );
+      return result("DENY", "F2", "Rule F2 applies: only Admins have standing Admin Console access, and this request has neither Admin standing nor a qualifying Manager approval count.");
     }
 
-    // Rule 3: Incident Response Tools.
     if (resource === "Incident Response Tools") {
       if (department === "Security") {
-        return result("APPROVE", "R3", "Rule 3: Security team members have standing access to incident response tools.");
+        return result("APPROVE", "F3", "Rule F3 applies: Security team members have standing access to Incident Response Tools at all times.");
       }
       if (role === "Admin") {
-        return result("APPROVE", "R3", "Rule 3: Admins have standing access to incident response tools.");
+        return result("APPROVE", "F3", "Rule F3 applies: Admins have standing access to Incident Response Tools at all times.");
       }
       if (incidentActive && approvals >= cfg.r3IncidentApprovals) {
-        return result(
-          "APPROVE",
-          "R3",
-          "Rule 3: during an active incident, non-Security staff with at least " + cfg.r3IncidentApprovals + " prior approval(s) are auto-approved for incident response tools."
-        );
+        return result("APPROVE", "F3", "Rule F3 applies: during an active declared incident, non-Security staff with at least one prior approval are auto-approved for Incident Response Tools.");
       }
       if (incidentActive) {
-        return result(
-          "ESCALATE",
-          "R3",
-          "Rule 3: during an active incident, non-Security staff without a prior approval are escalated for expedited review."
-        );
+        return result("ESCALATE", "F3", "Rule F3 applies: during an active declared incident, non-Security staff without a prior approval are escalated for expedited review.");
       }
-      return result(
-        "DENY",
-        "R3",
-        "Rule 3: outside an active incident, incident response tools are limited to the Security team and Admins."
-      );
+      return result("DENY", "F3", "Rule F3 applies: outside an active incident, non-Security, non-Admin staff are denied Incident Response Tools access.");
     }
 
-    // Rule 4: Finance-restricted systems (Billing System, Payroll System, Financial Reports).
-    if (FINANCE_SYSTEMS.indexOf(resource) !== -1) {
-      if (department === "Finance") {
-        if (role === "Intern") {
-          return result(
-            "ESCALATE",
-            "R4",
-            "Rule 4: Finance interns need sign-off before accessing financial systems, even within their own department."
-          );
-        }
-        return result(
-          "APPROVE",
-          "R4",
-          "Rule 4: Finance department staff have standing access to financial systems."
-        );
+    if (FERNWOOD_FINANCE_SYSTEMS.indexOf(resource) !== -1) {
+      if (department === "Finance" && role !== "Intern") {
+        return result("APPROVE", "F4", "Rule F4 applies: Finance department staff have standing access to Finance-restricted systems.");
+      }
+      if (department === "Finance" && role === "Intern") {
+        return result("ESCALATE", "F4", "Rule F4 applies: Finance interns need sign-off even within their own department, so this is escalated rather than auto-approved.");
       }
       if ((role === "Manager" || role === "Admin") && approvals >= cfg.r4OutsideApprovals) {
-        return result(
-          "ESCALATE",
-          "R4",
-          "Rule 4: Managers and Admins outside Finance may request access to financial systems with " + cfg.r4OutsideApprovals + " prior approval(s), pending further review."
-        );
+        return result("ESCALATE", "F4", "Rule F4 applies: outside Finance, a Manager or Admin with one prior approval is escalated pending further review.");
       }
-      return result(
-        "DENY",
-        "R4",
-        "Rule 4: financial systems are restricted to the Finance department outside of an approved exception."
-      );
+      return result("DENY", "F4", "Rule F4 applies: outside Finance, without a qualifying Manager/Admin approval, access to Finance-restricted systems is denied.");
     }
 
-    // Rule 5: Customer PII.
     if (resource === "Customer PII") {
       if (department === "Support") {
-        return result("APPROVE", "R5", "Rule 5: Support staff have standing access to Customer PII to resolve tickets.");
+        return result("APPROVE", "F5", "Rule F5 applies: Support has standing access to Customer PII for handling tickets.");
       }
       if (department === "Security") {
-        return result("APPROVE", "R5", "Rule 5: Security staff have standing access to Customer PII for investigations.");
+        return result("APPROVE", "F5", "Rule F5 applies: Security has standing access to Customer PII for investigations.");
       }
       if (department === "Engineering" && approvals >= cfg.r5EngineeringApprovals) {
-        return result(
-          "ESCALATE",
-          "R5",
-          "Rule 5: Engineering may request Customer PII access for debugging with " + cfg.r5EngineeringApprovals + " prior approval(s), pending further review."
-        );
+        return result("ESCALATE", "F5", "Rule F5 applies: Engineering may access Customer PII for debugging with one prior approval, pending further review.");
       }
-      return result(
-        "DENY",
-        "R5",
-        "Rule 5: Customer PII is restricted to Support and Security, or Engineering with an approval under review."
-      );
+      return result("DENY", "F5", "Rule F5 applies: outside Support, Security, and approved Engineering debugging requests, Customer PII access is denied.");
     }
 
-    // Rule 6: Production Database.
     if (resource === "Production Database") {
+      if (department === "Engineering" && role === "Intern") {
+        return result("DENY", "F6", "Rule F6 applies: Interns are denied Production Database access outright, a hard ceiling regardless of department.");
+      }
+      if (department === "Engineering" && role === "Contractor") {
+        return result("ESCALATE", "F6", "Rule F6 applies: Contractors in Engineering require review before granting Production Database access.");
+      }
       if (department === "Engineering") {
-        if (role === "Intern") {
-          return result("DENY", "R6", "Rule 6: Interns are denied Production Database access regardless of department.");
-        }
-        if (role === "Contractor") {
-          return result(
-            "ESCALATE",
-            "R6",
-            "Rule 6: Contractors in Engineering may request Production Database access, but it requires review before granting."
-          );
-        }
-        return result(
-          "APPROVE",
-          "R6",
-          "Rule 6: Engineering employees, managers, and admins have standing access to the Production Database."
-        );
+        return result("APPROVE", "F6", "Rule F6 applies: Employees, Managers, and Admins in Engineering have standing Production Database access.");
       }
       if (approvals >= cfg.r6OutsideApprovals) {
-        return result(
-          "ESCALATE",
-          "R6",
-          "Rule 6: staff outside Engineering may request Production Database access with " + cfg.r6OutsideApprovals + " prior approval(s), pending final review."
-        );
+        return result("ESCALATE", "F6", "Rule F6 applies: outside Engineering, Production Database access may be escalated with two prior approvals.");
       }
-      return result(
-        "DENY",
-        "R6",
-        "Rule 6: Production Database access is restricted to Engineering outside of an approved exception."
-      );
+      return result("DENY", "F6", "Rule F6 applies: outside Engineering without two prior approvals, Production Database access is denied.");
     }
 
-    // Rule 7: Source Code Repository.
     if (resource === "Source Code Repository") {
       if (department === "Engineering") {
-        return result(
-          "APPROVE",
-          "R7",
-          "Rule 7: Engineering has standing access to the Source Code Repository regardless of role."
-        );
+        return result("APPROVE", "F7", "Rule F7 applies: Engineering has standing Source Code Repository access regardless of role, including Contractors and Interns on the team.");
       }
       if (role === "Contractor") {
-        return result(
-          "DENY",
-          "R7",
-          "Rule 7: Contractors outside Engineering are denied Source Code Repository access."
-        );
+        return result("DENY", "F7", "Rule F7 applies: Contractors outside Engineering are denied Source Code Repository access outright.");
       }
       if (approvals >= cfg.r7OutsideApprovals) {
-        return result(
-          "ESCALATE",
-          "R7",
-          "Rule 7: staff outside Engineering may request Source Code Repository access with " + cfg.r7OutsideApprovals + " prior approval(s), pending further review."
-        );
+        return result("ESCALATE", "F7", "Rule F7 applies: outside Engineering, Source Code Repository access may be escalated with one prior approval.");
       }
-      return result(
-        "DENY",
-        "R7",
-        "Rule 7: Source Code Repository access outside Engineering requires at least one prior approval."
-      );
+      return result("DENY", "F7", "Rule F7 applies: outside Engineering without a prior approval, Source Code Repository access is denied.");
     }
 
-    // Rule 8: Employee Records.
     if (resource === "Employee Records") {
       if (department === "People") {
-        return result("APPROVE", "R8", "Rule 8: People (HR) staff have standing access to Employee Records.");
+        return result("APPROVE", "F8", "Rule F8 applies: People (HR) staff have standing access to Employee Records.");
       }
       if (role === "Manager" && directReport === true) {
-        return result(
-          "APPROVE",
-          "R8",
-          "Rule 8: Managers have standing access to Employee Records for their own direct reports, and this request confirms the records belong to one."
-        );
+        return result("APPROVE", "F8", "Rule F8 applies: a Manager has standing access to Employee Records for their own direct reports.");
       }
       if (role === "Manager" && directReport === undefined) {
-        return result(
-          "ESCALATE",
-          "R8",
-          "Rule 8: Managers have standing access to Employee Records only for their own direct reports, and this request doesn't state whether that's the case here — escalate for clarification rather than assume it."
-        );
+        return result("ESCALATE", "F8", "Rule F8 applies: when it is not stated whether the records belong to the Manager's own direct report, this is escalated for clarification rather than assumed either way.");
       }
       if (role === "Admin") {
-        return result("APPROVE", "R8", "Rule 8: Admins have standing access to Employee Records.");
+        return result("APPROVE", "F8", "Rule F8 applies: Admins have standing access to Employee Records.");
       }
       if (approvals >= cfg.r8OutsideApprovals) {
-        return result(
-          "ESCALATE",
-          "R8",
-          "Rule 8: non-managers outside People may request Employee Records access with " + cfg.r8OutsideApprovals + " prior approval(s), pending further review."
-        );
+        return result("ESCALATE", "F8", "Rule F8 applies: without standing access, Employee Records requests may be escalated with one prior approval.");
       }
-      return result(
-        "DENY",
-        "R8",
-        "Rule 8: Employee Records are restricted to People, Managers, and Admins outside of an approved exception."
-      );
+      return result("DENY", "F8", "Rule F8 applies: without standing access or a qualifying prior approval, Employee Records access is denied.");
     }
 
-    // Rule 9: Vendor Contracts.
     if (resource === "Vendor Contracts") {
       if (department === "Finance") {
-        return result("APPROVE", "R9", "Rule 9: Finance has standing access to Vendor Contracts.");
+        return result("APPROVE", "F9", "Rule F9 applies: Finance has standing access to Vendor Contracts.");
+      }
+      if (department === "Sales" && (role === "Manager" || role === "Admin")) {
+        return result("APPROVE", "F9", "Rule F9 applies: Managers and Admins within Sales have standing access to Vendor Contracts.");
       }
       if (department === "Sales") {
-        if (role === "Manager" || role === "Admin") {
-          return result("APPROVE", "R9", "Rule 9: Sales Managers and Admins have standing access to Vendor Contracts.");
-        }
-        return result(
-          "ESCALATE",
-          "R9",
-          "Rule 9: Sales staff below Manager level may request Vendor Contracts access, pending further review."
-        );
+        return result("ESCALATE", "F9", "Rule F9 applies: other Sales staff may be escalated for Vendor Contracts access pending further review.");
       }
-      return result(
-        "DENY",
-        "R9",
-        "Rule 9: Vendor Contracts are restricted to Finance and Sales leadership outside of an approved exception."
-      );
+      return result("DENY", "F9", "Rule F9 applies: outside Finance and Sales, Vendor Contracts access is denied.");
     }
 
-    // Rule 10: catch-all for anything not explicitly listed above (including "Other / Unlisted
-    // System"), falling back to the number of prior approvals obtained.
+    // Rule 10: catch-all for anything not explicitly listed above.
     if (approvals >= cfg.r10ApproveThreshold) {
-      return result(
-        "APPROVE",
-        "R10",
-        "Rule 10: requests for systems not explicitly covered by this policy are approved once " + cfg.r10ApproveThreshold + " prior approval(s) have been obtained."
-      );
+      return result("APPROVE", "F10", "Rule F10 applies: for an unlisted system, two or more prior approvals is approved under the catch-all.");
     }
     if (approvals === 1) {
-      return result(
-        "ESCALATE",
-        "R10",
-        "Rule 10: requests for systems not explicitly covered by this policy are escalated for review with one prior approval."
-      );
+      return result("ESCALATE", "F10", "Rule F10 applies: for an unlisted system, exactly one prior approval is escalated under the catch-all.");
     }
-    return result(
-      "DENY",
-      "R10",
-      "Rule 10: requests for systems not explicitly covered by this policy are denied without at least one prior approval."
-    );
+    return result("DENY", "F10", "Rule F10 applies: for an unlisted system with zero prior approvals, the catch-all denies the request.");
   }
 
-  return { evaluate, ROLES, DEPARTMENTS, RESOURCES, FINANCE_SYSTEMS, DEFAULT_CONFIG };
+  // ---------------------------------------------------------------------------------------
+  // Meridian Health (fictional hospital system, HIPAA-flavored clinical-systems access)
+  // ---------------------------------------------------------------------------------------
+
+  const MERIDIAN_ROLES = ["Clinician", "Nurse", "Billing Coordinator", "IT Admin", "Compliance Officer"];
+  const MERIDIAN_DEPARTMENTS = ["Clinical Care", "Billing", "IT", "Compliance", "Research"];
+  const MERIDIAN_RESOURCES = [
+    "Patient Records (EHR)", "Pharmacy System", "Billing/Claims System", "Lab Results",
+    "Research Data Repository", "Audit Logs", "Other / Unlisted System",
+  ];
+  const MERIDIAN_DEFAULT_CONFIG = {
+    m2EmergencyApprovals: 1,
+    m3NurseApprovals: 1,
+    m4OutsideApprovals: 2,
+    m5ComplianceApprovals: 1,
+    m6ClinicianApprovals: 2,
+    m8ApproveThreshold: 999, // Meridian's catch-all deliberately has no auto-approve path at all.
+  };
+
+  function evaluateMeridian(input, config) {
+    const cfg = Object.assign({}, MERIDIAN_DEFAULT_CONFIG, config || {});
+    const { role, department, resource, approvals = 0, offboarding, emergencyActive } = input;
+
+    // Rule 1: offboarding override, checked first, overrides everything else.
+    if (offboarding) {
+      return result("DENY", "M1", "Rule M1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals.");
+    }
+
+    if (resource === "Patient Records (EHR)") {
+      if ((role === "Clinician" || role === "Nurse") && department === "Clinical Care") {
+        return result("APPROVE", "M2", "Rule M2 applies: Clinicians and Nurses in Clinical Care have standing access to Patient Records for treatment purposes.");
+      }
+      if (role === "IT Admin") {
+        return result("APPROVE", "M2", "Rule M2 applies: IT Admin has standing access to Patient Records for system maintenance.");
+      }
+      if (role === "Compliance Officer") {
+        return result("APPROVE", "M2", "Rule M2 applies: the Compliance Officer has standing access to Patient Records for audits.");
+      }
+      if (role === "Clinician" && emergencyActive) {
+        if (approvals >= cfg.m2EmergencyApprovals) {
+          return result("APPROVE", "M2", "Rule M2 applies: under the break-glass emergency clause, a Clinician requesting Patient Records outside their normal assignment during an active clinical emergency is auto-approved with at least one prior approval.");
+        }
+        return result("ESCALATE", "M2", "Rule M2 applies: under the break-glass emergency clause, a Clinician requesting Patient Records outside their normal assignment during an active clinical emergency is escalated for expedited review without a prior approval.");
+      }
+      if (role === "Billing Coordinator" && approvals >= 1) {
+        return result("ESCALATE", "M2", "Rule M2 applies: a Billing Coordinator may access Patient Records with one prior approval, escalated as scope-limited to billing purposes only.");
+      }
+      return result("DENY", "M2", "Rule M2 applies: without standing access, break-glass emergency grounds, or a qualifying Billing Coordinator approval, Patient Records access is denied.");
+    }
+
+    if (resource === "Pharmacy System") {
+      if (role === "Clinician") {
+        return result("APPROVE", "M3", "Rule M3 applies: Clinicians have standing access to the Pharmacy System.");
+      }
+      if (role === "Nurse" && approvals >= cfg.m3NurseApprovals) {
+        return result("ESCALATE", "M3", "Rule M3 applies: a Nurse may access the Pharmacy System with one prior approval, escalated for review.");
+      }
+      if (role === "IT Admin") {
+        return result("APPROVE", "M3", "Rule M3 applies: IT Admin has standing access to the Pharmacy System for maintenance.");
+      }
+      if (role === "Compliance Officer") {
+        return result("APPROVE", "M3", "Rule M3 applies: the Compliance Officer has standing access to the Pharmacy System for audit purposes.");
+      }
+      return result("DENY", "M3", "Rule M3 applies: without standing access or a qualifying Nurse approval, Pharmacy System access is denied.");
+    }
+
+    if (resource === "Billing/Claims System") {
+      if (role === "Billing Coordinator") {
+        return result("APPROVE", "M4", "Rule M4 applies: Billing Coordinators have standing access to the Billing/Claims System.");
+      }
+      if (role === "Compliance Officer") {
+        return result("APPROVE", "M4", "Rule M4 applies: the Compliance Officer has standing access to the Billing/Claims System for audit purposes.");
+      }
+      if (approvals >= cfg.m4OutsideApprovals) {
+        return result("ESCALATE", "M4", "Rule M4 applies: without standing access, the Billing/Claims System may be escalated with two prior approvals.");
+      }
+      return result("DENY", "M4", "Rule M4 applies: without standing access or two prior approvals, Billing/Claims System access is denied.");
+    }
+
+    if (resource === "Lab Results") {
+      if (role === "Clinician" || role === "Nurse") {
+        return result("APPROVE", "M5", "Rule M5 applies: Clinicians and Nurses have standing access to Lab Results.");
+      }
+      if (role === "Billing Coordinator") {
+        return result("DENY", "M5", "Rule M5 applies: Billing Coordinators are denied Lab Results access outright, a hard rule since it is never needed for billing.");
+      }
+      if (role === "Compliance Officer" && approvals >= cfg.m5ComplianceApprovals) {
+        return result("ESCALATE", "M5", "Rule M5 applies: the Compliance Officer may access Lab Results with one prior approval, escalated for review.");
+      }
+      return result("DENY", "M5", "Rule M5 applies: without standing access or a qualifying Compliance Officer approval, Lab Results access is denied.");
+    }
+
+    if (resource === "Research Data Repository") {
+      if (role === "Compliance Officer" || role === "IT Admin") {
+        return result("APPROVE", "M6", "Rule M6 applies: the Compliance Officer and IT Admin have standing access to the Research Data Repository for data governance.");
+      }
+      if (role === "Clinician" && approvals >= cfg.m6ClinicianApprovals) {
+        return result("ESCALATE", "M6", "Rule M6 applies: a Clinician may access the Research Data Repository with two prior approvals, representing IRB sign-off, escalated for review.");
+      }
+      return result("DENY", "M6", "Rule M6 applies: without standing access or a qualifying Clinician approval count, Research Data Repository access is denied.");
+    }
+
+    if (resource === "Audit Logs") {
+      if (role === "Compliance Officer" || role === "IT Admin") {
+        return result("APPROVE", "M7", "Rule M7 applies: the Compliance Officer and IT Admin have standing access to Audit Logs.");
+      }
+      return result("DENY", "M7", "Rule M7 applies: everyone else is denied Audit Logs access outright, with no escalate path, even with prior approvals.");
+    }
+
+    // Rule 8: catch-all. Deliberately no auto-approve path; healthcare policy is conservative by design.
+    if (approvals >= 1) {
+      return result("ESCALATE", "M8", "Rule M8 applies: for an unlisted system, one or more prior approvals is escalated under the catch-all.");
+    }
+    return result("DENY", "M8", "Rule M8 applies: for an unlisted system with zero prior approvals, the catch-all denies the request.");
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Vertex Capital (fictional asset-management/trading firm, SOX/segregation-of-duties flavored)
+  // ---------------------------------------------------------------------------------------
+
+  const VERTEX_ROLES = ["Trader", "Portfolio Manager", "Compliance Officer", "Ops Analyst", "Admin"];
+  const VERTEX_DEPARTMENTS = ["Trading Desk", "Portfolio Management", "Compliance", "Operations", "IT"];
+  const VERTEX_RESOURCES = [
+    "Trading System (Order Entry)", "Client Accounts", "Trade Blotter", "Model Risk Repository",
+    "Regulatory Filings", "Audit Trail", "Other / Unlisted System",
+  ];
+  const VERTEX_DEFAULT_CONFIG = {
+    v2OpsApprovals: 2,
+    v3TraderApprovals: 1,
+    v4OutsideApprovals: 1,
+    v5PmApprovals: 1,
+    v6PmApprovals: 2,
+    v8ApproveThreshold: 2,
+  };
+
+  function evaluateVertex(input, config) {
+    const cfg = Object.assign({}, VERTEX_DEFAULT_CONFIG, config || {});
+    const { role, resource, approvals = 0, offboarding } = input;
+
+    // Rule 1: offboarding override, checked first, overrides everything else.
+    if (offboarding) {
+      return result("DENY", "V1", "Rule V1 applies: accounts currently offboarding or already terminated are denied outright, regardless of role, department, or approvals.");
+    }
+
+    if (resource === "Trading System (Order Entry)") {
+      if (role === "Trader" || role === "Portfolio Manager") {
+        return result("APPROVE", "V2", "Rule V2 applies: Traders and Portfolio Managers have standing access to the Trading System.");
+      }
+      if (role === "Admin") {
+        return result("APPROVE", "V2", "Rule V2 applies: Admin has standing access to the Trading System for system administration, not trading.");
+      }
+      if (role === "Compliance Officer") {
+        return result("DENY", "V2", "Rule V2 applies: the Compliance Officer is denied Trading System access outright, a hard segregation-of-duties rule with no exceptions, since compliance staff can never place trades.");
+      }
+      if (role === "Ops Analyst" && approvals >= cfg.v2OpsApprovals) {
+        return result("ESCALATE", "V2", "Rule V2 applies: an Ops Analyst may access the Trading System with two prior approvals, escalated for review.");
+      }
+      return result("DENY", "V2", "Rule V2 applies: without standing access or a qualifying Ops Analyst approval count, Trading System access is denied.");
+    }
+
+    if (resource === "Client Accounts") {
+      if (role === "Portfolio Manager") {
+        return result("APPROVE", "V3", "Rule V3 applies: Portfolio Managers have standing access to Client Accounts.");
+      }
+      if (role === "Ops Analyst") {
+        return result("APPROVE", "V3", "Rule V3 applies: Ops Analyst has standing access to Client Accounts for servicing.");
+      }
+      if (role === "Compliance Officer") {
+        return result("APPROVE", "V3", "Rule V3 applies: the Compliance Officer has standing access to Client Accounts for oversight.");
+      }
+      if (role === "Trader" && approvals >= cfg.v3TraderApprovals) {
+        return result("ESCALATE", "V3", "Rule V3 applies: a Trader may access Client Accounts with one prior approval, escalated since Traders need visibility sometimes but not standing access.");
+      }
+      return result("DENY", "V3", "Rule V3 applies: without standing access or a qualifying Trader approval, Client Accounts access is denied.");
+    }
+
+    if (resource === "Trade Blotter") {
+      if (role === "Compliance Officer" || role === "Ops Analyst" || role === "Trader" || role === "Portfolio Manager" || role === "Admin") {
+        return result("APPROVE", "V4", "Rule V4 applies: Compliance Officer, Ops Analyst, Traders, Portfolio Managers, and Admin all have standing access to the Trade Blotter.");
+      }
+      if (approvals >= cfg.v4OutsideApprovals) {
+        return result("ESCALATE", "V4", "Rule V4 applies: without standing access, the Trade Blotter may be escalated with one prior approval.");
+      }
+      return result("DENY", "V4", "Rule V4 applies: without standing access or a prior approval, Trade Blotter access is denied.");
+    }
+
+    if (resource === "Model Risk Repository") {
+      if (role === "Compliance Officer") {
+        return result("APPROVE", "V5", "Rule V5 applies: the Compliance Officer has standing access to the Model Risk Repository as part of their model validation duty.");
+      }
+      if (role === "Admin") {
+        return result("APPROVE", "V5", "Rule V5 applies: Admin has standing access to the Model Risk Repository for hosting.");
+      }
+      if (role === "Trader") {
+        return result("DENY", "V5", "Rule V5 applies: Traders are denied Model Risk Repository access outright, a hard segregation-of-duties rule, since Traders should not have direct access to the risk models governing their own limits.");
+      }
+      if (role === "Portfolio Manager" && approvals >= cfg.v5PmApprovals) {
+        return result("ESCALATE", "V5", "Rule V5 applies: a Portfolio Manager may access the Model Risk Repository with one prior approval, escalated for review.");
+      }
+      return result("DENY", "V5", "Rule V5 applies: without standing access or a qualifying Portfolio Manager approval, Model Risk Repository access is denied.");
+    }
+
+    if (resource === "Regulatory Filings") {
+      if (role === "Compliance Officer") {
+        return result("APPROVE", "V6", "Rule V6 applies: the Compliance Officer has standing access to Regulatory Filings.");
+      }
+      if (role === "Admin") {
+        return result("APPROVE", "V6", "Rule V6 applies: Admin has standing access to Regulatory Filings.");
+      }
+      if (role === "Portfolio Manager" && approvals >= cfg.v6PmApprovals) {
+        return result("ESCALATE", "V6", "Rule V6 applies: a Portfolio Manager may access Regulatory Filings with two prior approvals, escalated for review.");
+      }
+      return result("DENY", "V6", "Rule V6 applies: everyone else is denied Regulatory Filings access, with no exceptions.");
+    }
+
+    if (resource === "Audit Trail") {
+      if (role === "Compliance Officer" || role === "Admin") {
+        return result("APPROVE", "V7", "Rule V7 applies: the Compliance Officer and Admin have standing access to the Audit Trail.");
+      }
+      return result("DENY", "V7", "Rule V7 applies: everyone else is denied Audit Trail access outright, with no escalate path.");
+    }
+
+    // Rule 8: catch-all.
+    if (approvals >= cfg.v8ApproveThreshold) {
+      return result("APPROVE", "V8", "Rule V8 applies: for an unlisted system, two or more prior approvals is approved under the catch-all.");
+    }
+    if (approvals === 1) {
+      return result("ESCALATE", "V8", "Rule V8 applies: for an unlisted system, exactly one prior approval is escalated under the catch-all.");
+    }
+    return result("DENY", "V8", "Rule V8 applies: for an unlisted system with zero prior approvals, the catch-all denies the request.");
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Dispatcher
+  // ---------------------------------------------------------------------------------------
+
+  const EVALUATORS = {
+    fernwood: evaluateFernwood,
+    meridian: evaluateMeridian,
+    vertex: evaluateVertex,
+  };
+
+  function evaluate(company, input, config) {
+    const fn = EVALUATORS[company];
+    if (!fn) {
+      throw new Error("Unknown company: " + company + " (expected fernwood, meridian, or vertex)");
+    }
+    return fn(input, config);
+  }
+
+  return {
+    evaluate: evaluate,
+    COMPANIES: ["fernwood", "meridian", "vertex"],
+    COMPANY_LABELS: {
+      fernwood: "Fernwood Systems",
+      meridian: "Meridian Health",
+      vertex: "Vertex Capital",
+    },
+    RULE_PREFIX: { fernwood: "F", meridian: "M", vertex: "V" },
+    ROLES: { fernwood: FERNWOOD_ROLES, meridian: MERIDIAN_ROLES, vertex: VERTEX_ROLES },
+    DEPARTMENTS: { fernwood: FERNWOOD_DEPARTMENTS, meridian: MERIDIAN_DEPARTMENTS, vertex: VERTEX_DEPARTMENTS },
+    RESOURCES: { fernwood: FERNWOOD_RESOURCES, meridian: MERIDIAN_RESOURCES, vertex: VERTEX_RESOURCES },
+    FINANCE_SYSTEMS: FERNWOOD_FINANCE_SYSTEMS,
+    DEFAULT_CONFIG: {
+      fernwood: FERNWOOD_DEFAULT_CONFIG,
+      meridian: MERIDIAN_DEFAULT_CONFIG,
+      vertex: VERTEX_DEFAULT_CONFIG,
+    },
+  };
 });

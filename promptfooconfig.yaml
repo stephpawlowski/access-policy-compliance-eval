@@ -1,24 +1,37 @@
-description: "IAM access-policy compliance checker (v3) — does the LLM apply a written access policy, with 10 named systems and 105 test scenarios (90 v2 cases plus 15 adversarial/ambiguity cases), correctly?"
-
+description: "IAM access-policy compliance checker (v4): three fictional companies (Fernwood Systems, Meridian Health, Vertex Capital), each with its own policy, graded on three separate dimensions (policy_correct, rule_correct, decision_correct) instead of a single pass/fail."
 prompts:
   - file://prompt.txt
-
 providers:
-  # Uncomment / edit the providers you want to test. You need an API key set as an
-  # environment variable for whichever provider(s) you use (see README.md).
   - anthropic:messages:claude-sonnet-5
-  # - openai:gpt-4o-mini
-  # - openai:gpt-4o
-
 defaultTest:
   assert:
+    # decision_correct: does the model's first line (APPROVE/DENY/ESCALATE) match the answer key.
     - type: javascript
+      metric: decision_correct
       value: |
-        // The model is instructed to put APPROVE / DENY / ESCALATE on the first line.
-        // We grade by checking that first line against the expected decision from
-        // our answer key (tests.csv "expected" column).
         const firstLine = String(output).trim().split('\n')[0].toLowerCase();
         const expected = String(context.vars.expected).toLowerCase();
         return firstLine.includes(expected);
 
+    # rule_correct: does the full output cite the exact expected rule tag (e.g. "M2") as a
+    # standalone token, so "M2" doesn't false-positive match inside "M20".
+    - type: javascript
+      metric: rule_correct
+      value: |
+        const expectedRule = String(context.vars.expected_rule);
+        const pattern = new RegExp('\\b' + expectedRule + '\\b', 'i');
+        return pattern.test(String(output));
+
+    # policy_correct: extract whatever rule tag the model actually cited (first token matching
+    # [FMV]\d{1,2}), then check its company-letter prefix matches the expected company. A
+    # response that cites no gradable rule tag at all fails this dimension outright, that's a
+    # legitimate miss, not a pass by default.
+    - type: javascript
+      metric: policy_correct
+      value: |
+        const match = String(output).match(/\b([FMV])\d{1,2}\b/i);
+        if (!match) return false;
+        const citedPrefix = match[1].toUpperCase();
+        const expectedPrefix = String(context.vars.expected_company_prefix).toUpperCase();
+        return citedPrefix === expectedPrefix;
 tests: file://tests.csv
