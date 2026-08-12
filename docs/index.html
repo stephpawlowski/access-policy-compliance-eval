@@ -35,6 +35,36 @@
   }
   header h1 { margin: 0 0 4px; font-size: 22px; }
   header p { margin: 0; color: var(--muted); font-size: 14px; }
+  .byline { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .byline a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(43,95,173,0.35); }
+  .byline a:hover { border-bottom-color: var(--accent); }
+  .tagline { font-size: 15px; font-style: italic; color: var(--text); margin: 2px 0 12px; max-width: 700px; }
+  .intro { color: var(--text); font-size: 14px; max-width: 720px; margin: 0 0 14px; }
+  .intro code { background: var(--pending-bg); border-radius: 4px; padding: 1px 5px; font-size: 12.5px; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+  .tag { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px; font-size: 11.5px; color: var(--muted); }
+  .tldr {
+    background: var(--pass-bg);
+    border: 1px solid rgba(26,127,55,0.25);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    max-width: 780px;
+    margin: 0 0 12px;
+  }
+  .tldr b { color: var(--pass); }
+  .grading-note {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--pending-text);
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 780px;
+    margin: 0 0 4px;
+  }
+  .grading-note b { color: var(--text); }
   main {
     max-width: 1080px;
     margin: 0 auto;
@@ -135,8 +165,48 @@
 <body>
 
 <header>
-  <h1>Access Policy Compliance Eval: v4</h1>
-  <p>Three fictional companies, three policies, three separately-graded dimensions per response.</p>
+  <div class="byline">
+    By Stephanie Pawlowski &middot; <a href="https://stephpawlowski.com/">About Me</a> &middot;
+    <a href="https://www.linkedin.com/in/stephaniepawlowski/">LinkedIn</a> &middot;
+    Other project: <a href="https://benefits.stephpawlowski.com">Benefits Q&amp;A Checker</a>
+  </div>
+  <h1>Access Policy Compliance Eval</h1>
+  <div class="tagline">Can a model keep three separate written policies straight at once, and get the right answer for the right reason?</div>
+  <p class="intro">
+    161 access requests, each governed by one of three fictional companies' written IAM policies
+    (a general corporate policy, a HIPAA-flavored hospital policy, and a segregation-of-duties
+    trading-firm policy), all three given to the model in context at once so it has to pick the
+    right one, not just apply the only policy it's seen. This is v4 of the project, and the first
+    version that grades three separate dimensions per response instead of one: did the model apply
+    the right company's policy at all (<code>policy_correct</code>), cite the exact right rule
+    number within it (<code>rule_correct</code>), and reach the right final decision
+    (<code>decision_correct</code>). Model tested: <code>claude-sonnet-5</code>. Full write-up on
+    <a href="https://github.com/stephpawlowski/access-policy-compliance-eval">GitHub</a>.
+  </p>
+  <div class="tags">
+    <span class="tag">LLM evaluation design</span>
+    <span class="tag">Multi-policy reasoning</span>
+    <span class="tag">Rules-engine as source of truth</span>
+    <span class="tag">JavaScript</span>
+  </div>
+  <div class="tldr">
+    <b>TL;DR:</b> policy correct 161/161 (100%), rule correct 161/161 (100%), decision correct
+    160/161 (99.4%). The model never once applied the wrong company's policy, including on eight
+    rows built specifically to bait that mistake with similarly-named systems across companies
+    (Meridian's Billing/Claims System vs. Fernwood's Billing System, Meridian's Audit Logs vs.
+    Vertex's Audit Trail). It never cited a real but wrong rule number either. The one miss is a
+    formatting habit, not a policy error: the model second-guessed itself mid-answer and landed on
+    the correct decision after an incorrect first line, and the grader reads only the first line.
+  </div>
+  <div class="grading-note">
+    <b>Grading note:</b> row 19 (an Employee outside Finance requesting the Payroll System)
+    scores as a <code>decision_correct</code> fail even though the model's final, considered
+    answer was right, because it wrote ESCALATE, reconsidered out loud, then corrected to DENY,
+    and grading only reads the first line, per what the prompt instructs. <code>rule_correct</code>
+    and <code>policy_correct</code> both pass on that row, so this is specifically a first-line
+    formatting artifact, not a reasoning failure; the table below shows it exactly as graded,
+    nothing here is hidden.
+  </div>
 </header>
 
 <main>
