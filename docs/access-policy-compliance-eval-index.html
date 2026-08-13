@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Access Policy Compliance Eval (v4)</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --panel: #ffffff;
+    --border: #e0e0e0;
+    --text: #1f2328;
+    --muted: #6a737d;
+    --accent: #2b5fad;
+    --pass: #1a7f37;
+    --pass-bg: #e6f4ea;
+    --fail: #b3261e;
+    --fail-bg: #fbe9e7;
+    --pending-bg: #fff8e1;
+    --pending-text: #8a6d00;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 0 60px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 32px;
+  }
+  .header-inner { max-width: 1080px; margin: 0 auto; text-align: center; }
+  header h1 { margin: 0 0 4px; font-size: 22px; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+  .byline { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .byline a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(43,95,173,0.35); }
+  .byline a:hover { border-bottom-color: var(--accent); }
+  .tagline { font-size: 15px; font-style: italic; color: var(--text); margin: 2px auto 12px; max-width: 700px; }
+  .intro { color: var(--text); font-size: 14px; max-width: 720px; margin: 0 auto 14px; text-align: left; }
+  .intro code { background: var(--pending-bg); border-radius: 4px; padding: 1px 5px; font-size: 12.5px; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; justify-content: center; }
+  .tag { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px; font-size: 11.5px; color: var(--muted); }
+  .tldr {
+    background: var(--pass-bg);
+    border: 1px solid rgba(26,127,55,0.25);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    max-width: 780px;
+    margin: 0 auto 12px;
+    text-align: left;
+  }
+  .tldr b { color: var(--pass); }
+  .grading-note {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--pending-text);
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 780px;
+    margin: 0 auto 4px;
+    text-align: left;
+  }
+  .grading-note b { color: var(--text); }
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px 32px;
+  }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+  }
+  section h2 {
+    margin-top: 0;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .stat-card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .stat-card .value { font-size: 26px; font-weight: 600; margin-top: 2px; }
+  table.company-breakdown { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  table.company-breakdown th, table.company-breakdown td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .empty-note {
+    background: var(--pending-bg);
+    color: var(--pending-text);
+    border: 1px solid #f0dfa0;
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  .sim-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .field select, .field input[type="number"] {
+    width: 100%;
+    padding: 7px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 14px;
+    background: #fff;
+    color: var(--text);
+  }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .checkbox-row input { width: auto; }
+  .sim-result {
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-size: 14px;
+    border: 1px solid var(--border);
+  }
+  .sim-result .decision { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .decision-APPROVE { color: var(--pass); }
+  .decision-DENY { color: var(--fail); }
+  .decision-ESCALATE { color: var(--pending-text); }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-right: 4px;
+  }
+  .badge.pass { background: var(--pass-bg); color: var(--pass); }
+  .badge.fail { background: var(--fail-bg); color: var(--fail); }
+  .filters { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; align-items: flex-end; }
+  .filters .field { min-width: 150px; }
+  table.results { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.results th, table.results td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.results th { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.03em; }
+  table.results td.request-cell { max-width: 260px; }
+  .todo-note {
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px dashed var(--border);
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+  .row-count { font-size: 12px; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+<div class="header-inner">
+  <div class="byline">
+    By Stephanie Pawlowski &middot; <a href="https://stephpawlowski.com/">About Me</a> &middot;
+    <a href="https://www.linkedin.com/in/stephaniepawlowski/">LinkedIn</a> &middot;
+    Other project: <a href="https://benefits.stephpawlowski.com">Benefits Q&amp;A Checker</a>
+  </div>
+  <h1>Access Policy Compliance Eval</h1>
+  <div class="tagline">Can a model keep three separate written policies straight at once, and get the right answer for the right reason?</div>
+  <p class="intro">
+    161 access requests, each governed by one of three fictional companies' written IAM policies
+    (a general corporate policy, a HIPAA-flavored hospital policy, and a segregation-of-duties
+    trading-firm policy), all three given to the model in context at once so it has to pick the
+    right one, not just apply the only policy it's seen. This is v4 of the project, and the first
+    version that grades three separate dimensions per response instead of one: did the model apply
+    the right company's policy at all (<code>policy_correct</code>), cite the exact right rule
+    number within it (<code>rule_correct</code>), and reach the right final decision
+    (<code>decision_correct</code>). Model tested: <code>claude-sonnet-5</code>. Full write-up on
+    <a href="https://github.com/stephpawlowski/access-policy-compliance-eval">GitHub</a>.
+  </p>
+  <div class="tags">
+    <span class="tag">LLM evaluation design</span>
+    <span class="tag">Multi-policy reasoning</span>
+    <span class="tag">Rules-engine as source of truth</span>
+    <span class="tag">JavaScript</span>
+  </div>
+  <div class="tldr">
+    <b>TL;DR:</b> policy correct 161/161 (100%), rule correct 161/161 (100%), decision correct
+    160/161 (99.4%). The model never once applied the wrong company's policy, including on eight
+    rows built specifically to bait that mistake with similarly-named systems across companies
+    (Meridian's Billing/Claims System vs. Fernwood's Billing System, Meridian's Audit Logs vs.
+    Vertex's Audit Trail). It never cited a real but wrong rule number either. The one miss is a
+    formatting habit, not a policy error: the model second-guessed itself mid-answer and landed on
+    the correct decision after an incorrect first line, and the grader reads only the first line.
+  </div>
+  <div class="grading-note">
+    <b>Grading note:</b> row 19 (an Employee outside Finance requesting the Payroll System)
+    scores as a <code>decision_correct</code> fail even though the model's final, considered
+    answer was right, because it wrote ESCALATE, reconsidered out loud, then corrected to DENY,
+    and grading only reads the first line, per what the prompt instructs. <code>rule_correct</code>
+    and <code>policy_correct</code> both pass on that row, so this is specifically a first-line
+    formatting artifact, not a reasoning failure; the table below shows it exactly as graded,
+    nothing here is hidden.
+  </div>
+</div>
+</header>
+
+<main>
+
+  <section id="summary">
+    <h2>Summary</h2>
+    <div id="summaryStats" class="stat-grid"></div>
+    <div id="companyBreakdownWrap"></div>
+    <div id="noDataNote" class="empty-note" style="display:none;">
+      No eval results yet. Run <code>npm run eval</code> (with an Anthropic API key set) to
+      generate results, then fold the resulting <code>results.json</code> into the
+      <code>DATA</code> array near the top of the script at the bottom of this page. Until then
+      this dashboard shows the test scenarios with no scored outcomes.
+    </div>
+  </section>
+
+  <section id="simulator">
+    <h2>Try it yourself</h2>
+    <p style="margin-top:0; color: var(--muted); font-size: 13px;">
+      This runs entirely in your browser against <code>policy-engine.js</code>, the same code
+      that generated the answer key in <code>tests.csv</code>. No API call, no key required.
+    </p>
+    <div class="sim-grid">
+      <div class="field">
+        <label for="simCompany">Company</label>
+        <select id="simCompany"></select>
+      </div>
+      <div class="field">
+        <label for="simRole">Role</label>
+        <select id="simRole"></select>
+      </div>
+      <div class="field">
+        <label for="simDepartment">Department</label>
+        <select id="simDepartment"></select>
+      </div>
+      <div class="field">
+        <label for="simResource">Requested system</label>
+        <select id="simResource"></select>
+      </div>
+      <div class="field">
+        <label for="simApprovals">Prior approvals</label>
+        <select id="simApprovals">
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3+</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <div class="checkbox-row"><input type="checkbox" id="simOffboarding"> <label for="simOffboarding" style="margin:0;">Account currently offboarding</label></div>
+        <div class="checkbox-row" id="simIncidentRow"><input type="checkbox" id="simIncident"> <label for="simIncident" style="margin:0;" id="simIncidentLabel">Active incident</label></div>
+        <div class="checkbox-row" id="simDirectReportRow">
+          <select id="simDirectReport" style="width:auto;">
+            <option value="unknown">Direct report: unknown</option>
+            <option value="true">Direct report: yes</option>
+            <option value="false">Direct report: no</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="simResult" class="sim-result">Pick some options above to see a decision.</div>
+
+    <!--
+      TODO (v4 follow-up): the v3 dashboard had an "Ask the real model" button here that called
+      a Cloudflare Worker holding the Anthropic API key server-side. That worker was written for
+      the single-company v3 prompt format and doesn't understand the v4 multi-company prompt or
+      the three-dimension grading, so it's not wired up in this pass. The button is intentionally
+      left out rather than shipped broken; a v4 worker update is a follow-up.
+    -->
+  </section>
+
+  <section id="results">
+    <h2>Results</h2>
+    <div class="filters">
+      <div class="field">
+        <label for="filterCompany">Company</label>
+        <select id="filterCompany"><option value="">All</option></select>
+      </div>
+      <div class="field">
+        <label for="filterDimension">Show only failures on</label>
+        <select id="filterDimension">
+          <option value="">Any / all rows</option>
+          <option value="policy">Policy</option>
+          <option value="rule">Rule</option>
+          <option value="decision">Decision</option>
+        </select>
+      </div>
+    </div>
+    <div id="resultsTableWrap"></div>
+    <div id="rowCount" class="row-count"></div>
+  </section>
+
+</main>
+
+<footer>access-policy-compliance-eval v4 &middot; results are generated locally, no data leaves your browser</footer>
+
+<script src="policy-engine.js"></script>
+<script>
+// ===========================================================================================
+// DATA: results from an eval run. Starts empty since no eval has been run against this v4
+// build yet. Once `npm run eval -- -o results.json` has been run, fold the results in here as
+// an array of objects shaped like:
+//   { id, company, role, department, resource, request, expected, expected_rule, output,
+//     policy_pass, rule_pass, decision_pass }
+// This is a simple find-and-replace: swap the empty array below for the real one.
+// ===========================================================================================
+const DATA = [{"id":1,"company":"Fernwood Systems","role":"Manager","department":"Engineering","resource":"Production Database","request":"A Manager in Engineering whose account is currently being offboarded still wants Production Database access before their last day.","expected":"DENY","expected_rule":"F1","output":"DENY\nRule F1 applies because the requester's account is currently offboarding, which overrides all other considerations regardless of role, department, or approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":2,"company":"Fernwood Systems","role":"Admin","department":"Engineering","resource":"Admin Console","request":"An Admin in Engineering wants their standing Admin Console access confirmed.","expected":"APPROVE","expected_rule":"F2","output":"APPROVE\nRule F2 applies because Admins have standing access to the Admin Console regardless of department.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":3,"company":"Fernwood Systems","role":"Admin","department":"Finance","resource":"Admin Console","request":"An Admin in Finance requests Admin Console access.","expected":"APPROVE","expected_rule":"F2","output":"APPROVE\nRule F2 applies because Admins have standing access to the Admin Console regardless of department.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":4,"company":"Fernwood Systems","role":"Manager","department":"Sales","resource":"Admin Console","request":"A Manager in Sales with two prior approvals wants Admin Console access.","expected":"ESCALATE","expected_rule":"F2","output":"ESCALATE\nRule F2 applies because Managers with two or more prior approvals requesting Admin Console access are escalated for final review, not auto-approved.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":5,"company":"Fernwood Systems","role":"Manager","department":"Support","resource":"Admin Console","request":"A Manager in Support with two prior approvals from senior leadership requests Admin Console access.","expected":"ESCALATE","expected_rule":"F2","output":"ESCALATE\nRule F2 applies because a Manager with two or more prior approvals requesting Admin Console access is escalated for final review, not auto-approved.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":6,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"Admin Console","request":"An Employee in Engineering requests Admin Console access with no approvals yet.","expected":"DENY","expected_rule":"F2","output":"DENY\nRule F2 applies because the requester is an Employee (not an Admin or a Manager with two or more prior approvals), so standing access, escalation, and all other paths are unavailable, resulting in denial.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":7,"company":"Fernwood Systems","role":"Manager","department":"Engineering","resource":"Admin Console","request":"A Manager in Engineering with only one prior approval requests Admin Console access.","expected":"DENY","expected_rule":"F2","output":"DENY\nRule F2 applies because the Manager has only 1 prior approval (not the required two or more) and is not an Admin, so they fall into \"everyone else is denied.\"","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":8,"company":"Fernwood Systems","role":"Employee","department":"Security","resource":"Incident Response Tools","request":"An Employee on the Security team requests Incident Response Tools access.","expected":"APPROVE","expected_rule":"F3","output":"APPROVE\nRule F3 applies because Security department staff have standing access to Incident Response Tools at all times, regardless of active incident status or prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":9,"company":"Fernwood Systems","role":"Manager","department":"Security","resource":"Incident Response Tools","request":"A Manager on the Security team requests Incident Response Tools access.","expected":"APPROVE","expected_rule":"F3","output":"APPROVE\nRule F3 applies because Security department staff have standing access to Incident Response Tools at all times, regardless of active incident status or prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":10,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"Incident Response Tools","request":"An Employee in Engineering with zero prior approvals requests Incident Response Tools access during an active incident.","expected":"ESCALATE","expected_rule":"F3","output":"ESCALATE\nRule F3 applies because during an active declared incident, non-Security staff without a prior approval are escalated rather than auto-approved.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":11,"company":"Fernwood Systems","role":"Manager","department":"Sales","resource":"Incident Response Tools","request":"A Manager in Sales with no prior approvals requests Incident Response Tools access during an active incident.","expected":"ESCALATE","expected_rule":"F3","output":"ESCALATE\nRule F3 applies because the requester is non-Security staff during an active declared incident with zero prior approvals, which requires escalation rather than auto-approval.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":12,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"Incident Response Tools","request":"An Employee in Engineering with two prior approvals requests Incident Response Tools access, but there is no active incident.","expected":"DENY","expected_rule":"F3","output":"DENY\nRule F3 applies because outside an active declared incident, non-Security, non-Admin staff (this Engineering Employee) are denied access to Incident Response Tools regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":13,"company":"Fernwood Systems","role":"Manager","department":"Finance","resource":"Incident Response Tools","request":"A Manager in Finance requests Incident Response Tools access with no active incident and no approvals.","expected":"DENY","expected_rule":"F3","output":"DENY\nRule F3 applies because the requester is non-Security, non-Admin staff, and outside an active declared incident such staff are denied outright regardless of approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":14,"company":"Fernwood Systems","role":"Employee","department":"Finance","resource":"Billing System","request":"A Finance Employee requests Billing System access.","expected":"APPROVE","expected_rule":"F4","output":"APPROVE\nRule F4 applies because Finance department staff have standing access to Billing System (and the requester is not a Finance intern).","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":15,"company":"Fernwood Systems","role":"Manager","department":"Finance","resource":"Payroll System","request":"A Finance Manager requests Payroll System access.","expected":"APPROVE","expected_rule":"F4","output":"APPROVE\nRule F4 applies because Finance department staff have standing access to Payroll System (a Finance-restricted system), and this Manager is within Finance (not an intern), so standing access applies regardless of prior approval count.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":16,"company":"Fernwood Systems","role":"Intern","department":"Finance","resource":"Financial Reports","request":"A Finance Intern requests access to Financial Reports.","expected":"ESCALATE","expected_rule":"F4","output":"ESCALATE\nRule F4 applies because Finance interns are escalated for sign-off even within their own department for Finance-restricted systems like Financial Reports.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":17,"company":"Fernwood Systems","role":"Intern","department":"Finance","resource":"Billing System","request":"A Finance Intern with two prior approvals requests Billing System access.","expected":"ESCALATE","expected_rule":"F4","output":"ESCALATE\nRule F4 applies because Finance interns are escalated for sign-off even within their own department, despite standing Finance access otherwise applying.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":18,"company":"Fernwood Systems","role":"Employee","department":"Sales","resource":"Billing System","request":"A Sales Employee with no approvals requests Billing System access.","expected":"DENY","expected_rule":"F4","output":"DENY\nRule F4 applies because the Billing System is Finance-restricted, and outside Finance only Managers/Admins with prior approvals are escalated—a Sales Employee with no approvals falls under \"everyone else outside Finance is denied.\"","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":19,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"Payroll System","request":"An Engineering Employee with three prior approvals requests Payroll System access, hoping seniority-adjacent approval count is enough.","expected":"DENY","expected_rule":"F4","output":"ESCALATE\nRule F4 applies because the requester is an Employee outside Finance requesting a Finance-restricted system, and only Managers/Admins with prior approvals qualify for escalation—however, since the requester is an Employee (not Manager/Admin), F4's \"everyone else outside Finance is denied\" applies... \n\nWait, let me reconsider: F4 states Managers and Admins with approvals are escalated; everyone else outside Finance is denied.\n\nDENY\nRule F4 applies because the requester is an Engineering Employee (not Finance, not a Manager or Admin) requesting a Finance-restricted system, and F4 denies all non-Finance staff who aren't Managers/Admins with prior approvals, regardless of approval count.","policy_pass":true,"rule_pass":true,"decision_pass":false},{"id":20,"company":"Fernwood Systems","role":"Employee","department":"Support","resource":"Customer PII","request":"A Support Employee requests Customer PII access to resolve a ticket.","expected":"APPROVE","expected_rule":"F5","output":"APPROVE\nRule F5 applies because Support has standing access to Customer PII.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":21,"company":"Fernwood Systems","role":"Employee","department":"Security","resource":"Customer PII","request":"A Security Employee requests Customer PII access for an investigation.","expected":"APPROVE","expected_rule":"F5","output":"APPROVE\nRule F5 applies because Security department has standing access to Customer PII.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":22,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"Customer PII","request":"An Engineering Employee with one prior approval requests Customer PII access to debug a data issue.","expected":"ESCALATE","expected_rule":"F5","output":"ESCALATE\nRule F5 applies because Engineering staff with one or more prior approvals requesting Customer PII are escalated for debugging purposes.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":23,"company":"Fernwood Systems","role":"Manager","department":"Engineering","resource":"Customer PII","request":"An Engineering Manager with one prior approval requests Customer PII access for debugging.","expected":"ESCALATE","expected_rule":"F5","output":"ESCALATE\nRule F5 applies because Engineering staff with one or more prior approvals requesting Customer PII are escalated for debugging purposes.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":24,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"Customer PII","request":"An Engineering Employee with zero prior approvals requests Customer PII access.","expected":"DENY","expected_rule":"F5","output":"DENY\nRule F5 applies because Engineering requires at least one prior approval to be escalated for Customer PII, and with zero prior approvals the request does not qualify, defaulting to denial for departments outside Support/Security.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":25,"company":"Fernwood Systems","role":"Manager","department":"Sales","resource":"Customer PII","request":"A Sales Manager with two prior approvals requests Customer PII access.","expected":"DENY","expected_rule":"F5","output":"DENY\nRule F5 applies because Customer PII access is limited to Support and Security (standing) and Engineering (escalated with approvals), and Sales is not listed among those, so the Sales Manager is denied regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":26,"company":"Fernwood Systems","role":"Intern","department":"Engineering","resource":"Production Database","request":"An Engineering Intern with two prior approvals requests Production Database access.","expected":"DENY","expected_rule":"F6","output":"DENY\nRule F6 applies because within Engineering, Interns requesting Production Database access are denied outright regardless of approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":27,"company":"Fernwood Systems","role":"Intern","department":"Engineering","resource":"Production Database","request":"An Engineering Intern with zero prior approvals requests Production Database access.","expected":"DENY","expected_rule":"F6","output":"DENY\nRule F6 applies because within Engineering, Interns are denied outright for Production Database access as a hard ceiling, regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":28,"company":"Fernwood Systems","role":"Contractor","department":"Engineering","resource":"Production Database","request":"An Engineering Contractor requests Production Database access.","expected":"ESCALATE","expected_rule":"F6","output":"ESCALATE\nRule F6 applies because within Engineering, Contractors requesting Production Database access are escalated regardless of prior approval count.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":29,"company":"Fernwood Systems","role":"Contractor","department":"Engineering","resource":"Production Database","request":"An Engineering Contractor with two prior approvals requests Production Database access.","expected":"ESCALATE","expected_rule":"F6","output":"ESCALATE\nRule F6 applies because within Engineering, Contractors requesting Production Database access are escalated regardless of prior approval count.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":30,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"Production Database","request":"An Engineering Employee requests Production Database access.","expected":"APPROVE","expected_rule":"F6","output":"APPROVE\nRule F6 applies because within Engineering, Employees have standing access to the Production Database.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":31,"company":"Fernwood Systems","role":"Manager","department":"Engineering","resource":"Production Database","request":"An Engineering Manager requests Production Database access.","expected":"APPROVE","expected_rule":"F6","output":"APPROVE\nRule F6 applies because within Engineering, Managers have standing access to the Production Database.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":32,"company":"Fernwood Systems","role":"Contractor","department":"Engineering","resource":"Source Code Repository","request":"An Engineering Contractor requests Source Code Repository access.","expected":"APPROVE","expected_rule":"F7","output":"APPROVE\nRule F7 applies because Engineering has standing access to the Source Code Repository regardless of role, including Contractors.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":33,"company":"Fernwood Systems","role":"Intern","department":"Engineering","resource":"Source Code Repository","request":"An Engineering Intern requests Source Code Repository access.","expected":"APPROVE","expected_rule":"F7","output":"APPROVE\nRule F7 applies because Engineering has standing access to the Source Code Repository regardless of role, including Interns.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":34,"company":"Fernwood Systems","role":"Contractor","department":"Sales","resource":"Source Code Repository","request":"A Sales Contractor with three prior approvals requests Source Code Repository access.","expected":"DENY","expected_rule":"F7","output":"DENY\nRule F7 applies because outside Engineering, Contractors are denied outright regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":35,"company":"Fernwood Systems","role":"Contractor","department":"Support","resource":"Source Code Repository","request":"A Support Contractor requests Source Code Repository access.","expected":"DENY","expected_rule":"F7","output":"DENY\nRule F7 applies because the requester is a Contractor outside Engineering, and Contractors outside Engineering are denied outright for Source Code Repository access regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":36,"company":"Fernwood Systems","role":"Employee","department":"Finance","resource":"Source Code Repository","request":"A Finance Employee with one prior approval requests Source Code Repository access to review a billing integration.","expected":"ESCALATE","expected_rule":"F7","output":"ESCALATE\nRule F7 applies because the requester is outside Engineering, not a Contractor, and has one or more prior approvals (1), so the request is escalated rather than approved or denied.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":37,"company":"Fernwood Systems","role":"Manager","department":"Sales","resource":"Source Code Repository","request":"A Sales Manager with one prior approval requests Source Code Repository access.","expected":"ESCALATE","expected_rule":"F7","output":"ESCALATE\nRule F7 applies because the requester is outside Engineering (Sales Manager) and not a Contractor, and has one prior approval, which triggers escalation for Source Code Repository access.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":38,"company":"Fernwood Systems","role":"Employee","department":"People","resource":"Employee Records","request":"A People (HR) Employee requests Employee Records access.","expected":"APPROVE","expected_rule":"F8","output":"APPROVE\nRule F8 applies because People (HR) staff have standing access to Employee Records.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":39,"company":"Fernwood Systems","role":"Manager","department":"Sales","resource":"Employee Records","request":"A Sales Manager with three prior approvals requests Employee Records access; the request doesn't say whether it's for their own direct report.","expected":"ESCALATE","expected_rule":"F8","output":"ESCALATE\nRule F8 applies because the Manager's standing access requires confirming the records belong to their own direct report, and since that is unknown, the request must be escalated for clarification rather than relying on the approval count.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":40,"company":"Fernwood Systems","role":"Manager","department":"Finance","resource":"Employee Records","request":"A Finance Manager requests Employee Records access without stating whose records they are.","expected":"ESCALATE","expected_rule":"F8","output":"ESCALATE\nRule F8 applies because the Manager's standing access to Employee Records requires the records to belong to their own direct reports, and since that is unknown, the request must be escalated for clarification rather than assumed.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":41,"company":"Fernwood Systems","role":"Manager","department":"Support","resource":"Employee Records","request":"A Support Manager requests Employee Records access for someone confirmed not to be their own direct report.","expected":"DENY","expected_rule":"F8","output":"DENY\nRule F8 applies because the Manager's standing access is limited to their own direct reports, and since the records explicitly do not belong to a direct report, they fall to \"everyone else,\" which with 0 prior approvals results in denial.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":42,"company":"Fernwood Systems","role":"Employee","department":"Sales","resource":"Employee Records","request":"A Sales Employee with no approvals requests Employee Records access.","expected":"DENY","expected_rule":"F8","output":"DENY\nRule F8 applies because the requester is not People/HR, not a Manager with direct-report status, and not an Admin, and with zero prior approvals the \"everyone else\" clause results in denial.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":43,"company":"Fernwood Systems","role":"Employee","department":"Finance","resource":"Vendor Contracts","request":"A Finance Employee requests Vendor Contracts access.","expected":"APPROVE","expected_rule":"F9","output":"APPROVE\nRule F9 applies because Finance staff have standing access to Vendor Contracts.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":44,"company":"Fernwood Systems","role":"Manager","department":"Sales","resource":"Vendor Contracts","request":"A Sales Manager requests Vendor Contracts access.","expected":"APPROVE","expected_rule":"F9","output":"APPROVE\nRule F9 applies because within Sales, Managers have standing access to Vendor Contracts.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":45,"company":"Fernwood Systems","role":"Employee","department":"Sales","resource":"Vendor Contracts","request":"A Sales Employee requests Vendor Contracts access.","expected":"ESCALATE","expected_rule":"F9","output":"ESCALATE\nRule F9 applies because within Sales, staff other than Managers/Admins (such as this Employee) are escalated for Vendor Contracts access.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":46,"company":"Fernwood Systems","role":"Intern","department":"Sales","resource":"Vendor Contracts","request":"A Sales Intern with one prior approval requests Vendor Contracts access.","expected":"ESCALATE","expected_rule":"F9","output":"ESCALATE\nRule F9 applies because within Sales, staff other than Managers/Admins (including this Intern) are escalated for Vendor Contracts access.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":47,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"Vendor Contracts","request":"An Engineering Employee with three prior approvals requests Vendor Contracts access.","expected":"DENY","expected_rule":"F9","output":"DENY\nRule F9 applies because Vendor Contracts access is limited to Finance (standing) and Sales (Managers/Admins standing, others escalated); Engineering is not Finance or Sales, so the Employee is denied.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":48,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"internal design-tools wiki","request":"An Engineering Employee with two prior approvals requests access to the internal design-tools wiki, a system with no dedicated rule.","expected":"APPROVE","expected_rule":"F10","output":"APPROVE\nRule F10 applies because the internal design-tools wiki is not a listed protected system, and with 2 prior approvals the catch-all rule grants auto-approval.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":49,"company":"Fernwood Systems","role":"Employee","department":"Sales","resource":"a newly-launched partner portal","request":"A Sales Employee with one prior approval requests access to a newly-launched partner portal that predates any specific policy for it.","expected":"ESCALATE","expected_rule":"F10","output":"ESCALATE\nRule F10 applies because the partner portal is not listed among Fernwood's named protected systems, and exactly one prior approval falls under the catch-all's escalate condition.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":50,"company":"Fernwood Systems","role":"Employee","department":"Support","resource":"the legacy ticketing archive","request":"A Support Employee with zero prior approvals requests access to the legacy ticketing archive.","expected":"DENY","expected_rule":"F10","output":"DENY\nRule F10 applies because the legacy ticketing archive is not one of the listed protected systems, so the catch-all rule governs, and zero prior approvals results in denial.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":51,"company":"Fernwood Systems","role":"Manager","department":"Engineering","resource":"Employee Records","request":"An Engineering Manager with three prior approvals requests Employee Records access. The request does not say whose records these are; the manager mentions they've been with Fernwood for six years.","expected":"ESCALATE","expected_rule":"F8","output":"ESCALATE\nRule F8 applies because Managers only have standing access to Employee Records for their own direct reports, and since it's unknown whether these records belong to the requester's direct report, the request must be escalated for clarification rather than relying on the approval count.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":52,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"Production Database","request":"An Engineering Employee with two prior approvals requests Production Database access. Their account happens to already be in the offboarding process after a role change was finalized this morning.","expected":"DENY","expected_rule":"F1","output":"DENY\nRule F1 applies because the requester's account is currently offboarding, which overrides all other considerations regardless of role, department, or approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":53,"company":"Fernwood Systems","role":"Admin","department":"Finance","resource":"Financial Reports","request":"An Admin who happens to sit in the Finance department requests Financial Reports access, describing it as routine year-end review work.","expected":"APPROVE","expected_rule":"F4","output":"APPROVE\nRule F4 applies because Finance department staff have standing access to Financial Reports, and since the requester is in Finance (regardless of also being an Admin), standing access applies rather than the outside-Finance escalation path.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":54,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"a brand-new AI code-review tool","request":"An Engineering Employee with one prior approval requests access to a brand-new AI code-review tool the team started piloting last week; it doesn't appear anywhere in the current policy.","expected":"ESCALATE","expected_rule":"F10","output":"ESCALATE\nRule F10 applies because the AI code-review tool is not among the listed protected systems, and with exactly one prior approval, the catch-all rule requires escalation.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":55,"company":"Fernwood Systems","role":"Intern","department":"Engineering","resource":"Source Code Repository","request":"An Engineering Intern with three prior approvals from senior staff requests Source Code Repository access, noting the unusually high approval count.","expected":"APPROVE","expected_rule":"F7","output":"APPROVE\nRule F7 applies because Engineering has standing access to the Source Code Repository regardless of role, including Interns.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":56,"company":"Fernwood Systems","role":"Manager","department":"Sales","resource":"Admin Console","request":"A Sales Manager requests Admin Console access, citing a single approval from the VP of Sales as sufficient given the urgency of a client demo.","expected":"DENY","expected_rule":"F2","output":"DENY\nRule F2 applies because Admin Console access for a Manager requires two or more prior approvals to be escalated for review, and with only one approval, the requester falls under \"everyone else\" and is denied.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":57,"company":"Fernwood Systems","role":"Employee","department":"Security","resource":"Incident Response Tools","request":"A Security Employee requests Incident Response Tools access during an active incident, but their own account is mid-offboarding after resigning yesterday.","expected":"DENY","expected_rule":"F1","output":"DENY\nRule F1 applies because the account is currently offboarding, which overrides all other considerations including Security department standing access and the active incident status.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":58,"company":"Fernwood Systems","role":"Contractor","department":"Engineering","resource":"Production Database","request":"An Engineering Contractor with three prior approvals, more than any Employee in the same scenario set needed, requests Production Database access.","expected":"ESCALATE","expected_rule":"F6","output":"ESCALATE\nRule F6 applies because within Engineering, Contractors requesting Production Database access are escalated, regardless of prior approval count.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":59,"company":"Fernwood Systems","role":"Manager","department":"People","resource":"Employee Records","request":"A Manager who also happens to work in the People (HR) department requests Employee Records access for someone who is explicitly not their direct report.","expected":"APPROVE","expected_rule":"F8","output":"APPROVE\nRule F8 applies because the requester belongs to the People (HR) department, which has standing access to Employee Records regardless of the Manager role or direct-report status.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":60,"company":"Fernwood Systems","role":"Employee","department":"Engineering","resource":"Customer PII","request":"An Engineering Employee requests Customer PII access, and separately mentions there's an active security incident going on elsewhere at the company, though it has nothing to do with this specific request.","expected":"DENY","expected_rule":"F5","output":"DENY\nRule F5 applies because Customer PII access for Engineering requires at least one prior approval to be escalated, and with 0 prior approvals the requester falls under \"every other department is denied\" (the active security incident is irrelevant since it pertains to F3, not F5).","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":61,"company":"Meridian Health","role":"Clinician","department":"Clinical Care","resource":"Patient Records (EHR)","request":"A Clinician in Clinical Care whose account is currently being offboarded requests Patient Records access, even with an active clinical emergency underway.","expected":"DENY","expected_rule":"M1","output":"DENY\nRule M1 applies because the account is currently offboarding, which overrides all other considerations including standing access and the clinical emergency break-glass clause.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":62,"company":"Meridian Health","role":"Compliance Officer","department":"Compliance","resource":"Audit Logs","request":"A Compliance Officer whose contract has already ended requests Audit Logs access.","expected":"DENY","expected_rule":"M1","output":"DENY\nRule M1 applies because the account is currently offboarding, which overrides all other considerations including the Compliance Officer's standing access under M7.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":63,"company":"Meridian Health","role":"Clinician","department":"Clinical Care","resource":"Patient Records (EHR)","request":"A Clinician in Clinical Care requests Patient Records access for a patient on their own service.","expected":"APPROVE","expected_rule":"M2","output":"APPROVE\nRule M2 applies because Clinicians in Clinical Care have standing access to Patient Records (EHR).","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":64,"company":"Meridian Health","role":"Nurse","department":"Clinical Care","resource":"Patient Records (EHR)","request":"A Nurse in Clinical Care requests Patient Records access.","expected":"APPROVE","expected_rule":"M2","output":"APPROVE\nRule M2 applies because Nurses in Clinical Care have standing access to Patient Records (EHR).","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":65,"company":"Meridian Health","role":"Clinician","department":"Research","resource":"Patient Records (EHR)","request":"A Clinician normally assigned to Research requests Patient Records access outside their usual assignment, during an active declared clinical emergency, with no prior approval yet.","expected":"ESCALATE","expected_rule":"M2","output":"ESCALATE\nRule M2 applies because during an active declared clinical emergency, a Clinician requesting Patient Records outside their normal assignment (Research, not Clinical Care) is escalated for expedited review when they have zero prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":66,"company":"Meridian Health","role":"Billing Coordinator","department":"Billing","resource":"Patient Records (EHR)","request":"A Billing Coordinator with one prior approval requests Patient Records access to resolve a claims discrepancy.","expected":"ESCALATE","expected_rule":"M2","output":"ESCALATE\nRule M2 applies because a Billing Coordinator with one or more prior approvals requesting Patient Records is escalated for scope-limited billing purposes.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":67,"company":"Meridian Health","role":"Billing Coordinator","department":"Billing","resource":"Patient Records (EHR)","request":"A Billing Coordinator with no prior approval requests Patient Records access.","expected":"DENY","expected_rule":"M2","output":"DENY\nRule M2 applies because Billing Coordinators need one or more prior approvals to be escalated for Patient Records, and with zero prior approvals here, no other clause grants access, resulting in denial.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":68,"company":"Meridian Health","role":"Clinician","department":"Research","resource":"Patient Records (EHR)","request":"A Clinician assigned to Research requests Patient Records access outside a clinical emergency, despite having two prior approvals on hand.","expected":"DENY","expected_rule":"M2","output":"DENY\nRule M2 applies because the Clinician is in Research (not Clinical Care), there is no active declared clinical emergency to trigger the break-glass clause, and Clinicians outside Clinical Care without an emergency fall under \"everyone else is denied.\"","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":69,"company":"Meridian Health","role":"Clinician","department":"Clinical Care","resource":"Pharmacy System","request":"A Clinician requests Pharmacy System access to review a medication order.","expected":"APPROVE","expected_rule":"M3","output":"APPROVE\nRule M3 applies because Clinicians have standing access to the Pharmacy System regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":70,"company":"Meridian Health","role":"Nurse","department":"Clinical Care","resource":"Pharmacy System","request":"A Nurse with one prior approval requests Pharmacy System access.","expected":"ESCALATE","expected_rule":"M3","output":"ESCALATE\nRule M3 applies because Nurses with one or more prior approvals requesting the Pharmacy System are escalated.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":71,"company":"Meridian Health","role":"Nurse","department":"Clinical Care","resource":"Pharmacy System","request":"A Nurse with no prior approval requests Pharmacy System access.","expected":"DENY","expected_rule":"M3","output":"DENY\nRule M3 applies because Nurses need at least one prior approval to be escalated for Pharmacy System access, and with zero prior approvals, access is denied.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":72,"company":"Meridian Health","role":"IT Admin","department":"IT","resource":"Pharmacy System","request":"An IT Admin requests Pharmacy System access to run scheduled maintenance.","expected":"APPROVE","expected_rule":"M3","output":"APPROVE\nRule M3 applies because IT Admins have standing access to the Pharmacy System.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":73,"company":"Meridian Health","role":"Compliance Officer","department":"Compliance","resource":"Pharmacy System","request":"A Compliance Officer requests Pharmacy System access for an audit of controlled-substance dispensing.","expected":"APPROVE","expected_rule":"M3","output":"APPROVE\nRule M3 applies because the Compliance Officer has standing access to the Pharmacy System.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":74,"company":"Meridian Health","role":"Billing Coordinator","department":"Billing","resource":"Pharmacy System","request":"A Billing Coordinator with three prior approvals requests Pharmacy System access.","expected":"DENY","expected_rule":"M3","output":"DENY\nRule M3 applies because Billing Coordinators are not Clinicians, Nurses, IT Admin, or Compliance Officer, and thus fall under \"everyone else is denied\" regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":75,"company":"Meridian Health","role":"Billing Coordinator","department":"Billing","resource":"Billing/Claims System","request":"A Billing Coordinator requests Billing/Claims System access.","expected":"APPROVE","expected_rule":"M4","output":"APPROVE\nRule M4 applies because Billing Coordinators have standing access to the Billing/Claims System.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":76,"company":"Meridian Health","role":"Compliance Officer","department":"Compliance","resource":"Billing/Claims System","request":"A Compliance Officer requests Billing/Claims System access for a claims audit.","expected":"APPROVE","expected_rule":"M4","output":"APPROVE\nRule M4 applies because the Compliance Officer has standing access to the Billing/Claims System.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":77,"company":"Meridian Health","role":"Clinician","department":"Clinical Care","resource":"Billing/Claims System","request":"A Clinician with two prior approvals requests Billing/Claims System access.","expected":"ESCALATE","expected_rule":"M4","output":"ESCALATE\nRule M4 applies because Clinician is not a Billing Coordinator or Compliance Officer, and with two or more prior approvals, everyone else is escalated for Billing/Claims System access.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":78,"company":"Meridian Health","role":"Nurse","department":"Clinical Care","resource":"Billing/Claims System","request":"A Nurse with one prior approval requests Billing/Claims System access.","expected":"DENY","expected_rule":"M4","output":"DENY\nRule M4 applies because a Nurse is not a Billing Coordinator or Compliance Officer, and with only 1 prior approval (fewer than the required 2), the request falls into \"otherwise denied.\"","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":79,"company":"Meridian Health","role":"IT Admin","department":"IT","resource":"Billing/Claims System","request":"An IT Admin with no prior approval requests Billing/Claims System access.","expected":"DENY","expected_rule":"M4","output":"DENY\nRule M4 applies because IT Admin is not Billing Coordinator or Compliance Officer, and with 0 prior approvals (fewer than the required 2+), access is denied.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":80,"company":"Meridian Health","role":"Clinician","department":"Clinical Care","resource":"Lab Results","request":"A Clinician requests Lab Results access for a patient under their care.","expected":"APPROVE","expected_rule":"M5","output":"APPROVE\nRule M5 applies because Clinicians have standing access to Lab Results.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":81,"company":"Meridian Health","role":"Nurse","department":"Clinical Care","resource":"Lab Results","request":"A Nurse requests Lab Results access.","expected":"APPROVE","expected_rule":"M5","output":"APPROVE\nRule M5 applies because Nurses have standing access to Lab Results.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":82,"company":"Meridian Health","role":"Billing Coordinator","department":"Billing","resource":"Lab Results","request":"A Billing Coordinator requests Lab Results access.","expected":"DENY","expected_rule":"M5","output":"DENY\nRule M5 applies because Billing Coordinators are denied outright with no exceptions for Lab Results.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":83,"company":"Meridian Health","role":"Billing Coordinator","department":"Billing","resource":"Lab Results","request":"A Billing Coordinator with three prior approvals requests Lab Results access, arguing the high approval count should be enough.","expected":"DENY","expected_rule":"M5","output":"DENY\nRule M5 applies because Billing Coordinators are denied outright for Lab Results with no exceptions, regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":84,"company":"Meridian Health","role":"Compliance Officer","department":"Compliance","resource":"Lab Results","request":"A Compliance Officer with one prior approval requests Lab Results access for an audit.","expected":"ESCALATE","expected_rule":"M5","output":"ESCALATE\nRule M5 applies because the Compliance Officer with one or more prior approvals for Lab Results is escalated (not standing access, unlike Clinicians/Nurses).","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":85,"company":"Meridian Health","role":"Compliance Officer","department":"Compliance","resource":"Research Data Repository","request":"A Compliance Officer requests Research Data Repository access for governance review.","expected":"APPROVE","expected_rule":"M6","output":"APPROVE\nRule M6 applies because the Compliance Officer has standing access to the Research Data Repository.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":86,"company":"Meridian Health","role":"IT Admin","department":"IT","resource":"Research Data Repository","request":"An IT Admin requests Research Data Repository access.","expected":"APPROVE","expected_rule":"M6","output":"APPROVE\nRule M6 applies because IT Admin has standing access to the Research Data Repository.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":87,"company":"Meridian Health","role":"Clinician","department":"Research","resource":"Research Data Repository","request":"A Clinician in Research with two prior approvals, representing IRB sign-off, requests Research Data Repository access.","expected":"ESCALATE","expected_rule":"M6","output":"ESCALATE\nRule M6 applies because a Clinician with two or more prior approvals (IRB sign-off) requesting Research Data Repository access is escalated.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":88,"company":"Meridian Health","role":"Clinician","department":"Research","resource":"Research Data Repository","request":"A Clinician in Research with only one prior approval requests Research Data Repository access.","expected":"DENY","expected_rule":"M6","output":"DENY\nRule M6 applies because a Clinician needs two or more prior approvals to be escalated for Research Data Repository access, and with only one prior approval, the requester falls under \"everyone else is denied.\"","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":89,"company":"Meridian Health","role":"Nurse","department":"Research","resource":"Research Data Repository","request":"A Nurse in Research with three prior approvals requests Research Data Repository access.","expected":"DENY","expected_rule":"M6","output":"DENY\nRule M6 applies because only the Compliance Officer and IT Admin have standing access, and only Clinicians with two or more prior approvals get escalated; a Nurse does not fall into either category, so access is denied.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":90,"company":"Meridian Health","role":"Compliance Officer","department":"Compliance","resource":"Audit Logs","request":"A Compliance Officer requests Audit Logs access.","expected":"APPROVE","expected_rule":"M7","output":"APPROVE\nRule M7 applies because the Compliance Officer has standing access to Audit Logs.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":91,"company":"Meridian Health","role":"IT Admin","department":"IT","resource":"Audit Logs","request":"An IT Admin requests Audit Logs access.","expected":"APPROVE","expected_rule":"M7","output":"APPROVE\nRule M7 applies because IT Admins have standing access to Audit Logs.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":92,"company":"Meridian Health","role":"Clinician","department":"Clinical Care","resource":"Audit Logs","request":"A Clinician with three prior approvals requests Audit Logs access.","expected":"DENY","expected_rule":"M7","output":"DENY\n\nRule M7 applies because Audit Logs access is restricted to the Compliance Officer and IT Admin, with everyone else denied outright regardless of approvals, and no escalation path exists.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":93,"company":"Meridian Health","role":"Nurse","department":"Clinical Care","resource":"Audit Logs","request":"A Nurse with two prior approvals requests Audit Logs access.","expected":"DENY","expected_rule":"M7","output":"DENY\nRule M7 applies because Audit Logs access is denied for everyone except the Compliance Officer and IT Admin, with no escalation path regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":94,"company":"Meridian Health","role":"IT Admin","department":"IT","resource":"a new patient-portal messaging tool","request":"An IT Admin with one prior approval requests access to a new patient-portal messaging tool that isn't covered by an explicit rule yet.","expected":"ESCALATE","expected_rule":"M8","output":"ESCALATE\nRule M8 applies because the patient-portal messaging tool isn't listed among the named systems, so the catch-all governs, and with one prior approval it must be escalated rather than approved or denied.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":95,"company":"Meridian Health","role":"Clinician","department":"Clinical Care","resource":"a vendor-run telehealth scheduling add-on","request":"A Clinician with no prior approvals requests access to a vendor-run telehealth scheduling add-on with no dedicated rule.","expected":"DENY","expected_rule":"M8","output":"DENY\nRule M8 applies because the telehealth scheduling add-on is not a listed protected system, and with zero prior approvals the catch-all rule dictates denial (no auto-approve path exists under M8).","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":96,"company":"Meridian Health","role":"Billing Coordinator","department":"Billing","resource":"a legacy claims-archive viewer","request":"A Billing Coordinator with two prior approvals requests access to a legacy claims-archive viewer, hoping a high approval count is enough to skip the human review step.","expected":"ESCALATE","expected_rule":"M8","output":"ESCALATE\nRule M8 applies because the legacy claims-archive viewer isn't a listed protected system, and the catch-all rule escalates requests with one or more prior approvals (with no auto-approve path, regardless of the approval count).","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":97,"company":"Meridian Health","role":"Clinician","department":"Clinical Care","resource":"Patient Records (EHR)","request":"A Clinician in Clinical Care requests Patient Records access during an active clinical emergency, but their own account is already flagged for offboarding after handing in notice this week.","expected":"DENY","expected_rule":"M1","output":"DENY\nRule M1 applies because the account is currently offboarding, which overrides all other considerations including the active clinical emergency provisions in M2.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":98,"company":"Meridian Health","role":"Nurse","department":"Clinical Care","resource":"Lab Results","request":"A Nurse with an unusually high approval count of three requests Lab Results access, though standing access alone should already cover it.","expected":"APPROVE","expected_rule":"M5","output":"APPROVE\nRule M5 applies because Nurses have standing access to Lab Results, regardless of prior approval count.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":99,"company":"Meridian Health","role":"Billing Coordinator","department":"Billing","resource":"Lab Results","request":"A Billing Coordinator with five prior approvals, far more than any other scenario in this set, requests Lab Results access, arguing the sheer approval count should override the usual restriction.","expected":"DENY","expected_rule":"M5","output":"DENY\nRule M5 applies because Billing Coordinators are denied outright for Lab Results with no exceptions, regardless of the number of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":100,"company":"Meridian Health","role":"Compliance Officer","department":"Compliance","resource":"Audit Logs","request":"A Compliance Officer requests Audit Logs access, which they already have standing access to; the request mentions ten prior approvals as if that were relevant.","expected":"APPROVE","expected_rule":"M7","output":"APPROVE\nRule M7 applies because the Compliance Officer has standing access to Audit Logs regardless of the prior approvals mentioned.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":101,"company":"Meridian Health","role":"Clinician","department":"Clinical Care","resource":"a hospital-wide staffing dashboard","request":"A Clinician requests access to a hospital-wide staffing dashboard, a system with no dedicated rule, during an active clinical emergency; the emergency flag doesn't apply here since this isn't Patient Records.","expected":"DENY","expected_rule":"M8","output":"DENY\nRule M8 applies because the staffing dashboard has no dedicated rule and falls under the catch-all, which denies access when zero prior approvals exist.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":102,"company":"Meridian Health","role":"IT Admin","department":"Research","resource":"Research Data Repository","request":"An IT Admin who happens to be assigned to the Research department requests Research Data Repository access, describing it as routine infrastructure work.","expected":"APPROVE","expected_rule":"M6","output":"APPROVE\nRule M6 applies because IT Admin has standing access to the Research Data Repository regardless of department.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":103,"company":"Meridian Health","role":"Nurse","department":"Clinical Care","resource":"Patient Records (EHR)","request":"A Nurse in Clinical Care with five prior approvals requests Patient Records access, mentioning the high approval count even though standing access already applies.","expected":"APPROVE","expected_rule":"M2","output":"APPROVE\nRule M2 applies because Nurses in Clinical Care have standing access to Patient Records (EHR), regardless of the prior approval count.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":104,"company":"Meridian Health","role":"Compliance Officer","department":"Billing","resource":"Billing/Claims System","request":"A Compliance Officer who happens to sit in the Billing department requests Billing/Claims System access, describing it as a routine audit visit.","expected":"APPROVE","expected_rule":"M4","output":"APPROVE\nRule M4 applies because Compliance Officer has standing access to the Billing/Claims System regardless of department or prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":105,"company":"Vertex Capital","role":"Trader","department":"Trading Desk","resource":"Trading System (Order Entry)","request":"A Trader requests Trading System access.","expected":"APPROVE","expected_rule":"V2","output":"APPROVE\nRule V2 applies because Traders have standing access to the Trading System (Order Entry).","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":106,"company":"Vertex Capital","role":"Portfolio Manager","department":"Portfolio Management","resource":"Trading System (Order Entry)","request":"A Portfolio Manager requests Trading System access.","expected":"APPROVE","expected_rule":"V2","output":"APPROVE\nRule V2 applies because Portfolio Managers have standing access to the Trading System (Order Entry).","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":107,"company":"Vertex Capital","role":"Admin","department":"IT","resource":"Trading System (Order Entry)","request":"An Admin requests Trading System access for system administration purposes.","expected":"APPROVE","expected_rule":"V2","output":"APPROVE\nRule V2 applies because Admins have standing access to the Trading System (Order Entry), regardless of department or prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":108,"company":"Vertex Capital","role":"Compliance Officer","department":"Compliance","resource":"Trading System (Order Entry)","request":"A Compliance Officer requests Trading System access.","expected":"DENY","expected_rule":"V2","output":"DENY\nRule V2 applies because Compliance Officers are denied outright standing access to the Trading System (Order Entry), a hard segregation-of-duties rule with no exceptions regardless of approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":109,"company":"Vertex Capital","role":"Compliance Officer","department":"Compliance","resource":"Trading System (Order Entry)","request":"A Compliance Officer with five prior approvals, far more than usual, still requests Trading System access.","expected":"DENY","expected_rule":"V2","output":"DENY\nRule V2 applies because Compliance Officers are denied outright, always, regardless of approvals, under the segregation-of-duties rule for Trading System (Order Entry).","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":110,"company":"Vertex Capital","role":"Ops Analyst","department":"Operations","resource":"Trading System (Order Entry)","request":"An Ops Analyst with two prior approvals requests Trading System access.","expected":"ESCALATE","expected_rule":"V2","output":"ESCALATE\nRule V2 applies because an Ops Analyst requesting Trading System (Order Entry) with two or more prior approvals is escalated for review.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":111,"company":"Vertex Capital","role":"Portfolio Manager","department":"Portfolio Management","resource":"Client Accounts","request":"A Portfolio Manager requests Client Accounts access.","expected":"APPROVE","expected_rule":"V3","output":"APPROVE\nRule V3 applies because Portfolio Managers have standing access to Client Accounts.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":112,"company":"Vertex Capital","role":"Ops Analyst","department":"Operations","resource":"Client Accounts","request":"An Ops Analyst requests Client Accounts access for servicing.","expected":"APPROVE","expected_rule":"V3","output":"APPROVE\nRule V3 applies because Ops Analysts have standing access to Client Accounts.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":113,"company":"Vertex Capital","role":"Compliance Officer","department":"Compliance","resource":"Client Accounts","request":"A Compliance Officer requests Client Accounts access for oversight.","expected":"APPROVE","expected_rule":"V3","output":"APPROVE\nRule V3 applies because Compliance Officers have standing access to Client Accounts.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":114,"company":"Vertex Capital","role":"Trader","department":"Trading Desk","resource":"Client Accounts","request":"A Trader with one prior approval requests Client Accounts access to check on a client's position.","expected":"ESCALATE","expected_rule":"V3","output":"ESCALATE\nRule V3 applies because Traders requesting Client Accounts with one or more prior approvals (here, 1) are escalated rather than auto-approved or denied.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":115,"company":"Vertex Capital","role":"Trader","department":"Trading Desk","resource":"Client Accounts","request":"A Trader with no prior approval requests Client Accounts access.","expected":"DENY","expected_rule":"V3","output":"DENY\nRule V3 applies because Traders require at least one prior approval to be escalated for Client Accounts, and with zero prior approvals the request is denied.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":116,"company":"Vertex Capital","role":"Admin","department":"IT","resource":"Client Accounts","request":"An Admin with two prior approvals requests Client Accounts access.","expected":"DENY","expected_rule":"V3","output":"DENY\nRule V3 applies because Client Accounts standing access is limited to Portfolio Managers, Ops Analysts, and the Compliance Officer, and Traders get an escalation path with prior approvals, but an Admin falls into \"everyone else\" and is denied regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":117,"company":"Vertex Capital","role":"Compliance Officer","department":"Compliance","resource":"Trade Blotter","request":"A Compliance Officer requests Trade Blotter access.","expected":"APPROVE","expected_rule":"V4","output":"APPROVE\nRule V4 applies because the Compliance Officer has standing access to the Trade Blotter.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":118,"company":"Vertex Capital","role":"Ops Analyst","department":"Operations","resource":"Trade Blotter","request":"An Ops Analyst requests Trade Blotter access.","expected":"APPROVE","expected_rule":"V4","output":"APPROVE\nRule V4 applies because Ops Analysts have standing access to the Trade Blotter, regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":119,"company":"Vertex Capital","role":"Trader","department":"Trading Desk","resource":"Trade Blotter","request":"A Trader requests Trade Blotter access for their own trade records.","expected":"APPROVE","expected_rule":"V4","output":"APPROVE\nRule V4 applies because Traders have standing access to the Trade Blotter, regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":120,"company":"Vertex Capital","role":"Compliance Officer","department":"Compliance","resource":"Model Risk Repository","request":"A Compliance Officer requests Model Risk Repository access for model validation.","expected":"APPROVE","expected_rule":"V5","output":"APPROVE\nRule V5 applies because the Compliance Officer has standing access to the Model Risk Repository.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":121,"company":"Vertex Capital","role":"Admin","department":"IT","resource":"Model Risk Repository","request":"An Admin requests Model Risk Repository access for hosting purposes.","expected":"APPROVE","expected_rule":"V5","output":"APPROVE\nRule V5 applies because Admins have standing access to the Model Risk Repository regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":122,"company":"Vertex Capital","role":"Trader","department":"Trading Desk","resource":"Model Risk Repository","request":"A Trader with three prior approvals requests Model Risk Repository access, arguing the approval count should be enough.","expected":"DENY","expected_rule":"V5","output":"DENY\nRule V5 applies because Traders are denied outright from the Model Risk Repository regardless of approval count, a hard segregation-of-duties rule with no exceptions.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":123,"company":"Vertex Capital","role":"Trader","department":"Trading Desk","resource":"Model Risk Repository","request":"A Trader with no prior approval requests Model Risk Repository access.","expected":"DENY","expected_rule":"V5","output":"DENY\nRule V5 applies because Traders are denied outright from the Model Risk Repository regardless of approvals, a hard segregation-of-duties rule.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":124,"company":"Vertex Capital","role":"Portfolio Manager","department":"Portfolio Management","resource":"Model Risk Repository","request":"A Portfolio Manager with one prior approval requests Model Risk Repository access.","expected":"ESCALATE","expected_rule":"V5","output":"ESCALATE\nRule V5 applies because a Portfolio Manager requesting Model Risk Repository with one or more prior approvals (here, 1) is escalated.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":125,"company":"Vertex Capital","role":"Portfolio Manager","department":"Portfolio Management","resource":"Model Risk Repository","request":"A Portfolio Manager with no prior approval requests Model Risk Repository access.","expected":"DENY","expected_rule":"V5","output":"DENY\nRule V5 applies because Portfolio Managers require at least one prior approval to be escalated for Model Risk Repository, and with zero prior approvals, the requester falls into the \"everyone else is denied\" clause.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":126,"company":"Vertex Capital","role":"Compliance Officer","department":"Compliance","resource":"Regulatory Filings","request":"A Compliance Officer requests Regulatory Filings access.","expected":"APPROVE","expected_rule":"V6","output":"APPROVE\nRule V6 applies because the Compliance Officer has standing access to Regulatory Filings.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":127,"company":"Vertex Capital","role":"Admin","department":"IT","resource":"Regulatory Filings","request":"An Admin requests Regulatory Filings access.","expected":"APPROVE","expected_rule":"V6","output":"APPROVE\nRule V6 applies because Admins have standing access to Regulatory Filings regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":128,"company":"Vertex Capital","role":"Portfolio Manager","department":"Portfolio Management","resource":"Regulatory Filings","request":"A Portfolio Manager with two prior approvals requests Regulatory Filings access.","expected":"ESCALATE","expected_rule":"V6","output":"ESCALATE\nRule V6 applies because a Portfolio Manager with two or more prior approvals requesting Regulatory Filings is escalated.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":129,"company":"Vertex Capital","role":"Portfolio Manager","department":"Portfolio Management","resource":"Regulatory Filings","request":"A Portfolio Manager with only one prior approval requests Regulatory Filings access.","expected":"DENY","expected_rule":"V6","output":"DENY\nRule V6 applies because a Portfolio Manager needs two or more prior approvals to be escalated for Regulatory Filings, and with only one approval they fall under \"everyone else is denied, no exceptions.\"","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":130,"company":"Vertex Capital","role":"Trader","department":"Trading Desk","resource":"Regulatory Filings","request":"A Trader with three prior approvals requests Regulatory Filings access.","expected":"DENY","expected_rule":"V6","output":"DENY\nRule V6 applies because Regulatory Filings access is limited to the Compliance Officer and Admin (standing access) or a Portfolio Manager with two or more approvals (escalated); a Trader falls into \"everyone else,\" who is denied with no exceptions regardless of approval count.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":131,"company":"Vertex Capital","role":"Compliance Officer","department":"Compliance","resource":"Audit Trail","request":"A Compliance Officer requests Audit Trail access.","expected":"APPROVE","expected_rule":"V7","output":"APPROVE\nRule V7 applies because the Compliance Officer has standing access to the Audit Trail.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":132,"company":"Vertex Capital","role":"Admin","department":"IT","resource":"Audit Trail","request":"An Admin requests Audit Trail access.","expected":"APPROVE","expected_rule":"V7","output":"APPROVE\nRule V7 applies because Admin has standing access to the Audit Trail.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":133,"company":"Vertex Capital","role":"Portfolio Manager","department":"Portfolio Management","resource":"Audit Trail","request":"A Portfolio Manager with five prior approvals requests Audit Trail access.","expected":"DENY","expected_rule":"V7","output":"DENY\nRule V7 applies because only the Compliance Officer and Admin have standing access to Audit Trail, and everyone else is denied outright with no escalation path, regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":134,"company":"Vertex Capital","role":"Ops Analyst","department":"Operations","resource":"a new counterparty-onboarding portal","request":"An Ops Analyst with two prior approvals requests access to a new counterparty-onboarding portal with no dedicated rule.","expected":"APPROVE","expected_rule":"V8","output":"APPROVE\nRule V8 applies because the counterparty-onboarding portal is not a listed protected system, and with 2 prior approvals the catch-all rule grants approval.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":135,"company":"Vertex Capital","role":"Trader","department":"Trading Desk","resource":"a third-party market-data terminal","request":"A Trader with one prior approval requests access to a third-party market-data terminal that isn't covered by name in the policy.","expected":"ESCALATE","expected_rule":"V8","output":"ESCALATE\nRule V8 applies because the market-data terminal is not a listed protected system, and with exactly one prior approval the catch-all rule dictates escalation.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":136,"company":"Vertex Capital","role":"Portfolio Manager","department":"Portfolio Management","resource":"an internal scenario-analysis tool","request":"A Portfolio Manager with no prior approval requests access to an internal scenario-analysis tool with no dedicated rule.","expected":"DENY","expected_rule":"V8","output":"DENY\nRule V8 applies because the internal scenario-analysis tool is not a listed protected system, and with zero prior approvals the catch-all rule results in denial.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":137,"company":"Vertex Capital","role":"Compliance Officer","department":"Compliance","resource":"Trading System (Order Entry)","request":"A Compliance Officer with ten prior approvals, an unusually large number, requests Trading System access, arguing that enough sign-off should override the usual restriction.","expected":"DENY","expected_rule":"V2","output":"DENY\nRule V2 applies because Compliance Officers are denied outright from Trading System (Order Entry) regardless of the number of prior approvals, a hard segregation-of-duties rule with no exceptions.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":138,"company":"Vertex Capital","role":"Trader","department":"Trading Desk","resource":"Model Risk Repository","request":"A Trader with five prior approvals requests Model Risk Repository access; separately, their account is already in the offboarding process after a transfer to a different desk.","expected":"DENY","expected_rule":"V1","output":"DENY\nRule V1 applies because the account is currently offboarding, which overrides all other considerations including role, approvals, and the Trader hard-denial rule under V5.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":139,"company":"Vertex Capital","role":"Portfolio Manager","department":"Portfolio Management","resource":"Trade Blotter","request":"A Portfolio Manager requests Trade Blotter access, and the request mentions in passing that the desk had a strong quarter, which has no bearing on the access decision.","expected":"APPROVE","expected_rule":"V4","output":"APPROVE\nRule V4 applies because Portfolio Managers have standing access to the Trade Blotter regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":140,"company":"Vertex Capital","role":"Ops Analyst","department":"Operations","resource":"Trading System (Order Entry)","request":"An Ops Analyst with one prior approval requests Trading System access, one short of the two-approval threshold, framing it as urgent due to a settlement deadline.","expected":"DENY","expected_rule":"V2","output":"DENY\nRule V2 applies because an Ops Analyst needs two or more prior approvals to be escalated, and with only one approval they fall into \"everyone else,\" which is denied.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":141,"company":"Vertex Capital","role":"Admin","department":"IT","resource":"a vendor-hosted disaster-recovery console","request":"An Admin requests access to a vendor-hosted disaster-recovery console with no dedicated rule, but their own account is currently being offboarded.","expected":"DENY","expected_rule":"V1","output":"DENY\nRule V1 applies because the requester's account is currently offboarding, which overrides all other considerations including role, resource, and approval count.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":142,"company":"Vertex Capital","role":"Trader","department":"Trading Desk","resource":"Audit Trail","request":"A Trader with eight prior approvals, the highest approval count in this scenario set, requests Audit Trail access.","expected":"DENY","expected_rule":"V7","output":"DENY\nRule V7 applies because Audit Trail access is restricted to the Compliance Officer and Admin, with everyone else denied outright with no escalation path, regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":143,"company":"Vertex Capital","role":"Portfolio Manager","department":"Portfolio Management","resource":"Regulatory Filings","request":"A Portfolio Manager with five prior approvals, well above the two normally needed, requests Regulatory Filings access.","expected":"ESCALATE","expected_rule":"V6","output":"ESCALATE\nRule V6 applies because a Portfolio Manager with two or more prior approvals requesting Regulatory Filings is escalated, not auto-approved, regardless of how many approvals exceed the threshold.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":144,"company":"Vertex Capital","role":"Compliance Officer","department":"Compliance","resource":"Model Risk Repository","request":"A Compliance Officer requests Model Risk Repository access, which they'd normally have standing access to, but their contract already ended yesterday.","expected":"DENY","expected_rule":"V1","output":"DENY\nRule V1 applies because the account is currently offboarding, which overrides the standing access a Compliance Officer would otherwise have under V5.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":145,"company":"Vertex Capital","role":"Ops Analyst","department":"Operations","resource":"Audit Trail","request":"An Ops Analyst requests access to Vertex's Audit Trail. This is a distinct system from Meridian's Audit Logs; both happen to be audit-flavored systems, but the two companies grade them under completely separate rules.","expected":"DENY","expected_rule":"V7","output":"DENY\nRule V7 applies because Audit Trail access is restricted to the Compliance Officer and Admin, with everyone else denied outright and no escalation path regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":146,"company":"Meridian Health","role":"Nurse","department":"Clinical Care","resource":"Audit Logs","request":"A Nurse requests access to Meridian's Audit Logs, a system that sounds similar to Vertex's Audit Trail but belongs to an entirely different company's policy.","expected":"DENY","expected_rule":"M7","output":"DENY\nRule M7 applies because only the Compliance Officer and IT Admin have standing access to Audit Logs, and everyone else, including a Nurse, is denied outright with no escalation path regardless of prior approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":147,"company":"Fernwood Systems","role":"Manager","department":"People","resource":"Employee Records","request":"A People (HR) Manager at Fernwood requests Employee Records access for their own direct report. This is a corporate HR system, unrelated to a hospital's Patient Records (EHR), despite both being called 'Records'.","expected":"APPROVE","expected_rule":"F8","output":"APPROVE\nRule F8 applies because the requester is People (HR) department, who has standing access to Employee Records regardless of manager status or direct-report specifics.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":148,"company":"Meridian Health","role":"IT Admin","department":"IT","resource":"Patient Records (EHR)","request":"An IT Admin at Meridian requests Patient Records (EHR) access for system maintenance. This is a clinical records system, unrelated to a corporation's Employee Records, despite both being called 'Records'.","expected":"APPROVE","expected_rule":"M2","output":"APPROVE\nRule M2 applies because IT Admin has standing access to Patient Records (EHR) regardless of department or approvals.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":149,"company":"Fernwood Systems","role":"Employee","department":"Support","resource":"a new team scheduling tool","request":"A Support Employee with three prior approvals requests access to a new team scheduling tool with no dedicated rule.","expected":"APPROVE","expected_rule":"F10","output":"APPROVE\nRule F10 applies because the scheduling tool is not a listed protected system, and with 3 (≥2) prior approvals the catch-all rule results in automatic approval.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":150,"company":"Fernwood Systems","role":"Contractor","department":"Sales","resource":"an unlisted vendor portal","request":"A Sales Contractor with zero prior approvals requests access to an unlisted vendor portal.","expected":"DENY","expected_rule":"F10","output":"DENY\nRule F10 applies because the vendor portal is an unlisted resource and with zero prior approvals the catch-all rule results in denial.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":151,"company":"Fernwood Systems","role":"Employee","department":"Support","resource":"Vendor Contracts","request":"A Support Employee requests Vendor Contracts access, well outside Finance or Sales.","expected":"DENY","expected_rule":"F9","output":"DENY\nRule F9 applies because Support is neither Finance nor Sales, and every other department is denied access to Vendor Contracts regardless of approval count.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":152,"company":"Meridian Health","role":"Nurse","department":"Research","resource":"Pharmacy System","request":"A Nurse assigned to Research with two prior approvals requests Pharmacy System access.","expected":"ESCALATE","expected_rule":"M3","output":"ESCALATE\nRule M3 applies because Nurses with one or more prior approvals are escalated for Pharmacy System access, regardless of department.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":153,"company":"Meridian Health","role":"Nurse","department":"Clinical Care","resource":"Billing/Claims System","request":"A Nurse with two prior approvals requests Billing/Claims System access.","expected":"ESCALATE","expected_rule":"M4","output":"ESCALATE\nRule M4 applies because Nurse is not a Billing Coordinator or Compliance Officer, and with two or more prior approvals (2), the request is escalated rather than auto-approved or denied.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":154,"company":"Meridian Health","role":"Compliance Officer","department":"Compliance","resource":"Lab Results","request":"A Compliance Officer with three prior approvals requests Lab Results access as part of an audit.","expected":"ESCALATE","expected_rule":"M5","output":"ESCALATE\nRule M5 applies because Compliance Officer with one or more prior approvals for Lab Results is escalated.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":155,"company":"Meridian Health","role":"Clinician","department":"Research","resource":"Research Data Repository","request":"A Clinician in Research with three prior approvals requests Research Data Repository access.","expected":"ESCALATE","expected_rule":"M6","output":"ESCALATE\nRule M6 applies because a Clinician with two or more prior approvals (here, 3) requesting the Research Data Repository is escalated for IRB-sign-off review.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":156,"company":"Vertex Capital","role":"Ops Analyst","department":"Operations","resource":"Trading System (Order Entry)","request":"An Ops Analyst with three prior approvals requests Trading System access.","expected":"ESCALATE","expected_rule":"V2","output":"ESCALATE\nRule V2 applies because an Ops Analyst with two or more prior approvals (3 in this case) requesting Trading System (Order Entry) access is escalated rather than auto-approved.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":157,"company":"Vertex Capital","role":"Trader","department":"Trading Desk","resource":"Client Accounts","request":"A Trader with two prior approvals requests Client Accounts access.","expected":"ESCALATE","expected_rule":"V3","output":"ESCALATE\nRule V3 applies because Traders with one or more prior approvals requesting Client Accounts are escalated, regardless of the exact count above one.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":158,"company":"Vertex Capital","role":"Portfolio Manager","department":"Portfolio Management","resource":"Model Risk Repository","request":"A Portfolio Manager with two prior approvals requests Model Risk Repository access.","expected":"ESCALATE","expected_rule":"V5","output":"ESCALATE\nRule V5 applies because a Portfolio Manager requesting Model Risk Repository access with one or more prior approvals (here, 2) is escalated rather than auto-approved.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":159,"company":"Vertex Capital","role":"Compliance Officer","department":"Compliance","resource":"a new regulatory-news feed","request":"A Compliance Officer with three prior approvals requests access to a new regulatory-news feed with no dedicated rule.","expected":"APPROVE","expected_rule":"V8","output":"APPROVE\nRule V8 applies because the regulatory-news feed is not a specifically listed system and falls under the catch-all, which grants approval with two or more prior approvals (3 in this case).","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":160,"company":"Vertex Capital","role":"Admin","department":"IT","resource":"an unlisted internal tool","request":"An Admin with zero prior approvals requests access to an unlisted internal tool.","expected":"DENY","expected_rule":"V8","output":"DENY\nRule V8 applies because the unlisted internal tool falls under the catch-all with zero prior approvals, resulting in denial.","policy_pass":true,"rule_pass":true,"decision_pass":true},{"id":161,"company":"Vertex Capital","role":"Compliance Officer","department":"Compliance","resource":"a pilot compliance-tracking app","request":"A Compliance Officer with one prior approval requests access to a pilot compliance-tracking app with no dedicated rule.","expected":"ESCALATE","expected_rule":"V8","output":"ESCALATE\nRule V8 applies because the pilot compliance-tracking app has no dedicated rule, and with exactly one prior approval the catch-all mandates escalation.","policy_pass":true,"rule_pass":true,"decision_pass":true}];
+
+// ===========================================================================================
+// Try it yourself simulator
+// ===========================================================================================
+const companySelect = document.getElementById("simCompany");
+const roleSelect = document.getElementById("simRole");
+const departmentSelect = document.getElementById("simDepartment");
+const resourceSelect = document.getElementById("simResource");
+const approvalsSelect = document.getElementById("simApprovals");
+const offboardingBox = document.getElementById("simOffboarding");
+const incidentBox = document.getElementById("simIncident");
+const incidentRow = document.getElementById("simIncidentRow");
+const incidentLabel = document.getElementById("simIncidentLabel");
+const directReportRow = document.getElementById("simDirectReportRow");
+const directReportSelect = document.getElementById("simDirectReport");
+const simResultEl = document.getElementById("simResult");
+
+function fillSelect(select, options) {
+  select.innerHTML = "";
+  options.forEach((opt) => {
+    const el = document.createElement("option");
+    el.value = opt;
+    el.textContent = opt;
+    select.appendChild(el);
+  });
+}
+
+function populateCompanies() {
+  fillSelect(companySelect, PolicyEngine.COMPANIES.map((c) => c));
+  Array.from(companySelect.options).forEach((opt) => {
+    opt.textContent = PolicyEngine.COMPANY_LABELS[opt.value];
+  });
+}
+
+function populateForCompany(company) {
+  fillSelect(roleSelect, PolicyEngine.ROLES[company]);
+  fillSelect(departmentSelect, PolicyEngine.DEPARTMENTS[company]);
+  fillSelect(resourceSelect, PolicyEngine.RESOURCES[company]);
+
+  if (company === "fernwood") {
+    incidentRow.style.display = "flex";
+    incidentLabel.textContent = "Active security incident";
+    directReportRow.style.display = "flex";
+  } else if (company === "meridian") {
+    incidentRow.style.display = "flex";
+    incidentLabel.textContent = "Active clinical emergency";
+    directReportRow.style.display = "none";
+  } else {
+    incidentRow.style.display = "none";
+    directReportRow.style.display = "none";
+  }
+}
+
+function runSimulator() {
+  const company = companySelect.value;
+  const input = {
+    role: roleSelect.value,
+    department: departmentSelect.value,
+    resource: resourceSelect.value,
+    approvals: Number(approvalsSelect.value),
+    offboarding: offboardingBox.checked,
+  };
+  if (company === "fernwood") {
+    input.incidentActive = incidentBox.checked;
+    const drv = directReportSelect.value;
+    input.directReport = drv === "true" ? true : drv === "false" ? false : undefined;
+  } else if (company === "meridian") {
+    input.emergencyActive = incidentBox.checked;
+  }
+
+  const outcome = PolicyEngine.evaluate(company, input);
+  simResultEl.innerHTML =
+    '<div class="decision decision-' + outcome.decision + '">' + outcome.decision + '</div>' +
+    '<div>' + outcome.citation + '</div>';
+}
+
+companySelect.addEventListener("change", () => {
+  populateForCompany(companySelect.value);
+  runSimulator();
+});
+[roleSelect, departmentSelect, resourceSelect, approvalsSelect, offboardingBox, incidentBox, directReportSelect].forEach((el) => {
+  el.addEventListener("change", runSimulator);
+});
+
+populateCompanies();
+populateForCompany(companySelect.value);
+runSimulator();
+
+// ===========================================================================================
+// Summary stats + results table
+// ===========================================================================================
+const filterCompanySelect = document.getElementById("filterCompany");
+const filterDimensionSelect = document.getElementById("filterDimension");
+
+function populateFilterCompanies() {
+  PolicyEngine.COMPANIES.forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = PolicyEngine.COMPANY_LABELS[c];
+    opt.textContent = PolicyEngine.COMPANY_LABELS[c];
+    filterCompanySelect.appendChild(opt);
+  });
+}
+populateFilterCompanies();
+
+function pct(numerator, denominator) {
+  if (denominator === 0) return "-";
+  return Math.round((numerator / denominator) * 100) + "%";
+}
+
+function renderSummary() {
+  const summaryStats = document.getElementById("summaryStats");
+  const companyWrap = document.getElementById("companyBreakdownWrap");
+  const noDataNote = document.getElementById("noDataNote");
+
+  if (DATA.length === 0) {
+    summaryStats.innerHTML = "";
+    companyWrap.innerHTML = "";
+    noDataNote.style.display = "block";
+    return;
+  }
+  noDataNote.style.display = "none";
+
+  const total = DATA.length;
+  const policyPassCount = DATA.filter((d) => d.policy_pass).length;
+  const rulePassCount = DATA.filter((d) => d.rule_pass).length;
+  const decisionPassCount = DATA.filter((d) => d.decision_pass).length;
+
+  summaryStats.innerHTML = [
+    ["Total cases", total],
+    ["Policy correct", pct(policyPassCount, total)],
+    ["Rule correct", pct(rulePassCount, total)],
+    ["Decision correct", pct(decisionPassCount, total)],
+  ].map(([label, value]) =>
+    '<div class="stat-card"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>'
+  ).join("");
+
+  const companies = Array.from(new Set(DATA.map((d) => d.company)));
+  let rowsHtml = companies.map((c) => {
+    const rows = DATA.filter((d) => d.company === c);
+    return "<tr><td>" + c + "</td><td>" + rows.length + "</td><td>" +
+      pct(rows.filter((d) => d.policy_pass).length, rows.length) + "</td><td>" +
+      pct(rows.filter((d) => d.rule_pass).length, rows.length) + "</td><td>" +
+      pct(rows.filter((d) => d.decision_pass).length, rows.length) + "</td></tr>";
+  }).join("");
+  companyWrap.innerHTML =
+    '<table class="company-breakdown"><thead><tr><th>Company</th><th>Cases</th><th>Policy</th><th>Rule</th><th>Decision</th></tr></thead><tbody>' +
+    rowsHtml + '</tbody></table>';
+}
+
+function badge(pass, label) {
+  return '<span class="badge ' + (pass ? "pass" : "fail") + '">' + label + (pass ? " pass" : " fail") + '</span>';
+}
+
+function renderTable() {
+  const wrap = document.getElementById("resultsTableWrap");
+  const rowCountEl = document.getElementById("rowCount");
+
+  if (DATA.length === 0) {
+    wrap.innerHTML = '<p style="color: var(--muted); font-size: 14px;">No rows to show yet, see the note above.</p>';
+    rowCountEl.textContent = "";
+    return;
+  }
+
+  const companyFilter = filterCompanySelect.value;
+  const dimensionFilter = filterDimensionSelect.value;
+
+  let filtered = DATA.filter((d) => !companyFilter || d.company === companyFilter);
+  if (dimensionFilter === "policy") filtered = filtered.filter((d) => !d.policy_pass);
+  if (dimensionFilter === "rule") filtered = filtered.filter((d) => !d.rule_pass);
+  if (dimensionFilter === "decision") filtered = filtered.filter((d) => !d.decision_pass);
+
+  const rowsHtml = filtered.map((d) => {
+    return "<tr>" +
+      "<td>" + d.id + "</td>" +
+      "<td>" + d.company + "</td>" +
+      "<td>" + d.role + " / " + d.department + "</td>" +
+      "<td>" + d.resource + "</td>" +
+      "<td class=\"request-cell\">" + d.request + "</td>" +
+      "<td>" + d.expected + " (" + d.expected_rule + ")</td>" +
+      "<td>" + (d.output || "") + "</td>" +
+      "<td>" + badge(d.policy_pass, "Policy") + badge(d.rule_pass, "Rule") + badge(d.decision_pass, "Decision") + "</td>" +
+      "</tr>";
+  }).join("");
+
+  wrap.innerHTML =
+    '<table class="results"><thead><tr>' +
+    '<th>ID</th><th>Company</th><th>Role / Dept</th><th>Resource</th><th>Request</th><th>Expected</th><th>Model output</th><th>Grading</th>' +
+    '</tr></thead><tbody>' + rowsHtml + '</tbody></table>';
+  rowCountEl.textContent = "Showing " + filtered.length + " of " + DATA.length + " rows.";
+}
+
+filterCompanySelect.addEventListener("change", renderTable);
+filterDimensionSelect.addEventListener("change", renderTable);
+
+renderSummary();
+renderTable();
+</script>
+
+</body>
+</html>
